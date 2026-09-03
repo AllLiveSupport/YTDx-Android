@@ -20,6 +20,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/playlists_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/splash_screen.dart';
 
 YTDxAudioHandler? _globalAudioHandler;
 
@@ -86,7 +87,7 @@ class AuraApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: mode,
-      home: const MainShell(),
+      home: const SplashScreen(),
     );
   }
 }
