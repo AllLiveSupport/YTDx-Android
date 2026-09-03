@@ -24,6 +24,7 @@ class LyricsService {
     String? title,
     String? artist,
   }) async {
+    YoutubeExplode? yt;
     try {
       // 1. Check local .lrc file next to the downloaded audio file
       if (filePath != null && filePath.isNotEmpty) {
@@ -53,7 +54,6 @@ class LyricsService {
       // 3. Fetch video details to inspect official description lyrics
       Video? video;
       List<String> descLyrics = [];
-      YoutubeExplode? yt;
       try {
         yt = await AuthService.createYoutubeClient();
         video = await yt.videos.get(videoId);
@@ -209,6 +209,8 @@ class LyricsService {
       }
     } catch (e) {
       AppLogger.error(_tag, 'Şarkı sözü getirme hatası ($videoId): $e');
+    } finally {
+      yt?.close();
     }
 
     return null;

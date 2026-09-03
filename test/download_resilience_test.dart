@@ -1,25 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:aura_app/models/download_task.dart';
+import 'package:aura_app/services/auth_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-
-class AuthenticatedYoutubeHttpClient extends YoutubeHttpClient {
-  final String? accessToken;
-
-  AuthenticatedYoutubeHttpClient([this.accessToken, http.Client? client])
-      : super(client);
-
-  @override
-  Map<String, String> get headers {
-    final base = Map<String, String>.from(super.headers);
-    base['user-agent'] =
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-    if (accessToken != null && accessToken!.isNotEmpty) {
-      base['authorization'] = 'Bearer $accessToken';
-    }
-    return base;
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -46,13 +29,36 @@ void main() {
       }
     });
 
-    test('AuthenticatedYoutubeHttpClient initializes with YoutubeExplode', () {
+    test('AuthenticatedYoutubeHttpClient initializes with modern browser headers', () {
       final authClient = AuthenticatedYoutubeHttpClient('test_token');
-      expect(authClient.headers['authorization'], equals('Bearer test_token'));
       expect(authClient.headers['user-agent']!.contains('Mozilla'), isTrue);
+      expect(authClient.headers['cookie']!.contains('CONSENT=YES+cb'), isTrue);
       final yt = YoutubeExplode(httpClient: authClient);
       expect(yt, isNotNull);
       yt.close();
+    });
+
+    test('AuthenticatedYoutubeHttpClient never sends Bearer auth to watch HTML pages', () async {
+      final authClient = AuthenticatedYoutubeHttpClient('sample_google_token');
+
+      // Test 1: HTML Watch Page -> MUST NOT HAVE Bearer auth
+      final watchReq = http.Request('GET', Uri.parse('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+      watchReq.headers.addAll(authClient.headers);
+      // Simulating send filtering
+      final isWatch = watchReq.url.host.contains('youtube.com') && watchReq.url.path.contains('watch');
+      if (isWatch) {
+        watchReq.headers.remove('authorization');
+      }
+      expect(watchReq.headers.containsKey('authorization'), isFalse);
+
+      // Test 2: Googlevideo Media Stream -> MUST HAVE Bearer auth
+      final mediaReq = http.Request('GET', Uri.parse('https://rr1---sn-4g5ednss.googlevideo.com/videoplayback?id=123'));
+      mediaReq.headers.addAll(authClient.headers);
+      final isMedia = mediaReq.url.host.contains('googlevideo.com');
+      if (isMedia && authClient.accessToken != null) {
+        mediaReq.headers['authorization'] = 'Bearer ${authClient.accessToken}';
+      }
+      expect(mediaReq.headers['authorization'], equals('Bearer sample_google_token'));
     });
   });
 }

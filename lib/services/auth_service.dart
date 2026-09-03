@@ -26,17 +26,33 @@ class AuthenticatedYoutubeHttpClient extends YoutubeHttpClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    // Sadece Google Video medya akışlarına veya Innertube API isteklerine token ekle.
-    // www.youtube.com/watch gibi HTML web sayfalarına ASLA Bearer token eklenmemelidir,
-    // aksi halde Google Web sunucusu isteği 401/redirect ile reddederek VideoUnavailable hatası verir!
-    final host = request.url.host.toLowerCase();
-    final path = request.url.path.toLowerCase();
+    // 1. Ensure modern browser identity
+    request.headers['user-agent'] =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    request.headers['cookie'] = 'CONSENT=YES+cb';
+    request.headers['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
 
-    if (accessToken != null && accessToken!.isNotEmpty) {
-      if (host.contains('googlevideo.com') || path.contains('/youtubei/')) {
+    final uri = request.url;
+    final isHtmlWatchPage = uri.host.contains('youtube.com') &&
+        (uri.path.contains('watch') || uri.path.startsWith('/v/'));
+
+    // 2. CRITICAL: NEVER send Bearer authorization to standard HTML watch pages!
+    // YouTube's web frontends reject Bearer auth on public watch pages with 401/redirect,
+    // which breaks initialPlayerResponse scraping and causes VideoUnavailableException.
+    if (isHtmlWatchPage) {
+      request.headers.remove('authorization');
+      request.headers.remove('x-youtube-client-name');
+    } else if (accessToken != null && accessToken!.isNotEmpty) {
+      // 3. Inject Bearer authorization ONLY to Googlevideo media stream CDN or Innertube APIs
+      final isMediaOrApi = uri.host.contains('googlevideo.com') ||
+          uri.path.contains('youtubei') ||
+          uri.host.contains('googleapis.com');
+      if (isMediaOrApi) {
         request.headers['authorization'] = 'Bearer $accessToken';
+        request.headers['x-youtube-client-name'] = '1';
       }
     }
+
     return super.send(request);
   }
 }
