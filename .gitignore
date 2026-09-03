@@ -1,64 +1,78 @@
-# Python & Bytecode
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# ==============================================================================
+# YTDx Studio - Git Ignore Configuration
+# ==============================================================================
 
-# Python Virtual Environments
-.venv/
-venv/
-env/
-ENV/
-.env
-
-# Application State & Personal Configs
-ytdx.log
-config.json
-theme_config.json
-tokens.json
-download_history.json
-Downloads/
-output/
-
-# Flutter & Dart Build Artifacts
-aura_app/build/
-aura_app/.dart_tool/
-aura_app/.flutter-plugins
-aura_app/.flutter-plugins-dependencies
-aura_app/.pub-cache/
-aura_app/.pub/
-aura_app/linux/flutter/ephemeral/
-aura_app/windows/flutter/ephemeral/
-
-# Local C/C++ Tooling & Machine Databases
-compile_commands.json
-aura_app/compile_commands.json
-.clangd
-.clangd/
-
-# IDEs & OS Files
-.vscode/
-.idea/
+# AI Assistant & Memory Bank (Private / Local only)
+memory-bank/
+.agents/
 .gemini/
-.DS_Store
+.system_generated/
+.tempmediaStorage/
+.user_uploaded/
+scratch/
+test_*.dart
+
+# Large Build Artifacts & Binaries
+# (Note: APKs exceeding 100MB cannot be pushed to GitHub; use GitHub Releases instead)
+dist/
+build/
+*.apk
+*.aab
+
+# Flutter & Dart specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+coverage/
+
+# Android specific
+**/android/local.properties
+**/android/key.properties
+**/android/.gradle/
+**/android/app/build/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+*.jks
+*.keystore
+*.cer
+*.crt
+
+# Environment variables & Private credentials
+.env
+.env.*
+!.env.example
+secrets.json
+google-services.json
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
 *.swp
 *.swo
-
-# Internal Documentation & Notes
-memory-bank/
 *~
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
+
+# Temporary & Log files
+*.log
+*.tmp
+*.lrc

@@ -1,40 +1,53 @@
-# ⚖️ Legal Disclaimer, Terms of Service & Privacy Policy
+# Legal Disclaimer & Terms of Use
 
-Last updated: August 2026
-
-## 1. 🎓 Educational & Personal Research Purpose
-**YTDx Studio** is an open-source software project developed strictly for **educational, experimental, and personal archiving/backup purposes**. It is designed to demonstrate modern software architecture using Flutter Desktop, Dart, and Python.
-
-The developers of this project:
-- **Do not host, store, index, or distribute any copyrighted media or audio/video files.**
-- **Do not operate any centralized servers or streaming proxies.** All network requests occur directly between the end-user's local computer and the content provider.
-- **Do not encourage or condone the infringement of copyrighted material.**
+> **PLEASE READ THIS DISCLAIMER CAREFULLY BEFORE USING OR CONTRIBUTING TO THIS SOFTWARE.**
 
 ---
 
-## 2. 📜 User Responsibility & Copyright Compliance
-- **Compliance with Laws:** Users of YTDx Studio are solely responsible for ensuring that their use of this software complies with all applicable local, national, and international copyright laws and fair-use regulations in their jurisdiction.
-- **Terms of Service:** Users must respect the Terms of Service of third-party platforms (including YouTube / Google LLC). You should only download content that:
-  1. You own or have explicit permission from the copyright owner to download, OR
-  2. Is released under public domain or Creative Commons licenses (e.g., CC-BY), OR
-  3. Is permitted under applicable fair use / personal backup exceptions in your country.
-- **No Liability:** The authors and contributors of YTDx Studio accept **no liability or responsibility** for any misuse, commercial exploitation, copyright infringement, or legal consequences arising from the use of this software.
+## 1. Educational and Research Purpose Only
+
+**YTDx Studio** is an open-source research and educational project developed to explore:
+- High-performance cross-platform audio/video processing on mobile devices (Flutter & Rust).
+- Client-side Short-Time Fourier Transform (STFT) signal analysis and acoustic peak extraction.
+- Resilient stream multiplexing and local caching architectures.
+
+This software is distributed free of charge in the hope that it will be useful for study, research, and personal media archiving, but **WITHOUT ANY WARRANTY**.
 
 ---
 
-## 3. 🏷️ Trademarks & Third-Party Platforms
-- **YouTube™** and the YouTube logo are registered trademarks of **Google LLC**.
-- **YTDx Studio** is an independent third-party tool and is **NOT affiliated with, sponsored by, authorized by, or endorsed by Google LLC or YouTube**.
+## 2. YouTube™ & Google LLC Disclaimers
+
+- **YouTube™** is a registered trademark of **Google LLC** / **Alphabet Inc.**
+- **YTDx Studio** is an independent, community-driven open-source project. It is **NOT** affiliated with, authorized, endorsed, sponsored, or supported by Google LLC, YouTube, or any of their subsidiaries or affiliates.
+- The software uses reverse-engineered, publicly accessible protocols to access publicly hosted media streams for personal study and offline media playback.
+- **User Responsibility**: Users of this software are solely responsible for ensuring that their use complies with:
+  1. Applicable copyright and intellectual property laws in their jurisdiction.
+  2. YouTube's Terms of Service.
+  3. The explicit permissions granted by original copyright holders.
+- Downloading, storing, or redistributing copyrighted material without the express authorization of the copyright holder is strictly discouraged and may be unlawful in your jurisdiction.
 
 ---
 
-## 4. 🔒 Privacy Policy (100% Zero-Telemetry)
-Your privacy is fundamentally protected by design:
-- **Zero Tracking & No Analytics:** YTDx Studio contains **NO telemetry, NO analytics, NO tracking cookies, and NO user data collection**.
-- **Local Execution:** All application settings, download histories, and authentication tokens (if you choose to link Google OAuth) are stored exclusively in local JSON files on your personal computer.
-- **Direct Communication:** The application communicates directly with YouTube's public endpoints. No third-party tracking or middleman servers are ever contacted.
+## 3. Acoustic Music Recognition & Shazam™ Disclaimers
+
+- **Shazam™** is a registered trademark of **Apple Inc.**
+- The music recognition feature implemented in this project is based on the publicly available, peer-reviewed academic publication:
+  > *Wang, Avery Li-Chun. "An Industrial-Strength Audio Search Algorithm." In ISMIR, 2003.*
+- This repository **does NOT** contain, reverse-engineer, distribute, or circumvent any proprietary Apple binary SDKs, DRM protection mechanisms, private cryptographic keys, or proprietary Apple server software.
+- The acoustic fingerprint is extracted strictly locally on the user's device using public mathematical algorithms (STFT peak constellations) and dispatched over standard HTTPS protocols.
+- This project is not affiliated with, endorsed by, or partnered with Apple Inc. or Shazam Entertainment Limited.
 
 ---
 
-## 5. 📄 License
-The codebase of YTDx Studio is distributed under the terms of the **MIT License**. Please refer to the [LICENSE](LICENSE) file for complete details.
+## 4. Fair Use & Digital Rights Management (DRM)
+
+- **No DRM Circumvention**: This software **does NOT** circumvent, decrypt, or tamper with Digital Rights Management (DRM) protections (such as Widevine, FairPlay, or PlayReady). It only interfaces with unencrypted, publicly streamable web formats (DASH, VP9, WebM, MP4).
+- The developers respect intellectual property rights. If you are a copyright owner and believe that any documentation or code in this repository infringes upon your rights, please open an Issue or contact the maintainers for prompt resolution.
+
+---
+
+## 5. Limitation of Liability
+
+IN NO EVENT SHALL THE AUTHORS, MAINTAINERS, OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, LEGAL ACTIONS, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**BY DOWNLOADING, COMPILING, OR USING THIS SOFTWARE, YOU AGREE TO ASSUME FULL RESPONSIBILITY FOR YOUR ACTIONS.**

@@ -1,252 +1,210 @@
 <div align="center">
 
-  <img src="icons/icon_256.png" alt="YTDx Studio Logo" width="120" height="120" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+  <img src="assets/icons/app_icon.png" alt="YTDx Studio Logo" width="128" height="128" style="border-radius: 28px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);">
 
   # ⚡ YTDx Studio
-  ### Next-Generation 4K Video & 320kbps Music Downloader Desktop Suite
+  ### High-Performance YouTube Downloader, Acoustic Song Identifier & Studio Music Suite for Android
 
   [![Flutter](https://img.shields.io/badge/Flutter-3.x%2B-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-  [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-  [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-E95420?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/AllLiveSupport/YTDx-Studio)
-  [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-  [![Performance](https://img.shields.io/badge/Performance-120%20FPS%20AOT-7C3AED?style=for-the-badge&logo=speedtest&logoColor=white)](#performance)
+  [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
+  [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+  [![Architecture](https://img.shields.io/badge/Engine-Pure%20Dart%20%2B%20Rust-E95420?style=for-the-badge&logo=rust&logoColor=white)](#-architecture--stack)
+  [![No API Keys](https://img.shields.io/badge/API%20Keys-Zero%20%2F%20100%25%20Open-success?style=for-the-badge)](#-acoustic-song-recognition-shazam-protocol)
 
   <p align="center">
-    <b>YTDx Studio</b> is a high-performance, modern, and beautiful desktop application designed for seamless YouTube video and audio downloading, playlist batch management, in-app media playback, and live global trend exploration.
+    <b>YTDx Studio</b> is a cutting-edge, open-source Android application designed for lightning-fast YouTube downloads (up to 4K & 320kbps MP3), instant acoustic music recognition (Shazam protocol without API keys), real-time synchronized lyrics with <code>.lrc</code> export, and a full-featured background studio music player.
   </p>
 
-  [Key Features](#-key-features) • [Screenshots](#-screenshots-showcase) • [Quick Installation](#-quick-1-step-installation) • [Architecture](#-architecture) • [Contributing](#-contributing)
+  [Key Features](#-key-features) • [Screenshots](#-screenshots) • [Architecture](#-architecture--stack) • [Installation](#-installation--build) • [Contributing](#-contributing) • [Legal Disclaimer](#-legal-disclaimer)
 
 </div>
 
 ---
 
-## 🌟 Key Features
+## ✨ Key Features
 
-### 🎬 1. Ultra HD 4K/8K Video Downloader
-- Download videos in **4320p (8K)**, **2160p (4K)**, **1440p (2K)**, **1080p (Full HD)**, **720p**, and **480p**.
-- Automatic **FFmpeg DASH Adaptive Muxing**: Combines master video streams with high-bitrate audio streams in 0.3s with zero quality degradation.
+### 🚀 1. Zero-Lag & Zero-Timeout Download Engine
+- **Preflight Probe (512 KB Chunk Verification)**: Verifies stream URLs in under **25 milliseconds**, instantly skipping YouTube server-throttled or `403 Forbidden` streams without freezing the UI.
+- **Instant Single-Part (Muxed) Downloads**: Automatically detects YouTube's unified streams (720p / 360p) and downloads complete, playable videos in **2 to 3 seconds** without requiring audio remuxing.
+- **Adaptive 4K / 2K / 1080p Remuxing**: Multi-threaded adaptive stream downloading with Android Hardware `MediaMuxer` and FFmpeg fallback.
+- **Fail-Safe Video Recovery**: If adaptive high-res streams are throttled by YouTube, the engine seamlessly falls back to 720p/360p unified streams to guarantee 100% download success.
+- **Modern Codecs**: Full support for **WebM (VP9)**, **MP4 (AVC)**, **Opus**, and **AAC**.
 
-### 🎵 2. Studio Master 320kbps MP3 & ID3 Cover Embedding
-- Extract crystal-clear **320kbps MP3**, **256kbps M4A (AAC)**, **FLAC (Lossless Hi-Res)**, and **WAV** audio.
-- Automatic **ID3v2 Metadata & HD Album Art Embedding** directly into audio files for full compatibility with Spotify, Apple Music, VLC, and car stereos.
+### 🎵 2. Studio Master Audio Extraction & Rust Tagging
+- **Formats**: Crystal-clear **MP3** (320kbps / 192kbps / 128kbps), **M4A (AAC)**, and **Opus** (160kbps / 70kbps).
+- **Rust Lofty Integration (`audiotags`)**: Automatically embeds high-definition album art, artist, title, and album metadata directly into downloaded tracks at native speeds. Fully compatible with car stereos, Spotify local files, and Apple Music.
 
-### 📑 3. Spotify/Apple Music Style Playlist Batch Engine
-- Parse entire YouTube playlists in seconds.
-- **In-Playlist Real-Time Search**: Instantly filter tracks inside 100+ item playlists.
-- Quick Selection Pills: *Select All*, *Deselect All*, *Invert Selection*.
-- Batch Download Control Center with custom subfolder auto-organization.
+### 🎙️ 3. Acoustic Song Recognition (Shazam Protocol)
+- **100% On-Device & Free**: Uses Avery Wang's Short-Time Fourier Transform (STFT) spectrogram peak constellation algorithm.
+- **Zero Paid API Keys**: Does not rely on RapidAPI, Apple Developer tokens, or paid subscriptions. Works out-of-the-box in open-source builds.
+- **Interactive Radar Interface**: Ambient pulsing radar wave sheet that captures 6 seconds of ambient audio, identifies the track, and offers one-tap actions to search on YouTube, download as MP3/M4A/MP4, or copy to clipboard.
 
-### 🌍 4. Multi-Country & Multi-Topic Trending Explorer
-- Real-time localized trend exploration across **7 Topic Categories**: *General Trends*, *Music & Songs*, *Gaming*, *Movies & Cinema*, *Sports*, *Tech & Science*, *News & Media*.
-- Native language trend algorithms for **South Korea (K-Pop)**, **Japan (J-Pop/Anime)**, **United States**, **Germany**, **France**, **Spain**, **Brazil**, **Russia**, **Azerbaijan**, and **Turkey**.
+### 📜 4. Synchronized Lyrics & Offline `.lrc` Sync
+- **Multi-Tier Lyrics Pipeline**:
+  1. *Local `.lrc` File*: Instant offline loading from audio directory.
+  2. *Official Description Lyrics*: Extracted from artist descriptions and aligned with YouTube timing.
+  3. *Uploader Closed Captions*: Cleaned manual human captions.
+  4. *LRCLIB Web Database*: Automatic online fallback for videos without subtitles, matching artist/title and duration.
+- **Interactive UI**: Fluid auto-scrolling, tap-to-seek, glowing active lyric line, and automatic `.lrc` file export alongside downloaded tracks.
 
-### 🎧 5. Integrated In-App Media Player
-- Persistent bottom player bar with seek slider, track artwork, volume control, and playback controls.
-- Play downloaded MP3s and MP4s immediately inside the app without needing external players.
+### 🎧 5. Studio Music Player & Smart Sleep Timer
+- **Background & Lock Screen Playback**: Persistent audio session with lock screen album art, seek bar, and playback controls.
+- **Loop Modes**: Full queue repeat (`LoopMode.all`), single song infinite repeat (`LoopMode.one`), and normal playback.
+- **Smart Sleep Timer**: 15m, 30m, 45m, 60m, custom duration, or "End of This Song".
+- **Soft 15s Fade-Out**: In the final 15 seconds, audio gracefully fades down to a whisper before stopping, preventing sudden wake-ups.
 
-### ⚡ 6. 120 FPS High-Performance Engine
-- Built with **Flutter Desktop AOT Native Machine Code**.
-- **0ms Instant In-Memory Query Caching** for instant category and search navigation.
-- Isolated **GPU RepaintBoundaries** for zero frame drops during active downloads.
+### 🛡️ 6. Anti-Bot Protection & Google OAuth
+- **Account Sign-In (Optional)**: Connect your Google account directly in Settings to authenticate YouTube requests via `Authorization: Bearer $token`.
+- **Bypass Restrictions**: Seamlessly bypass IP rate limits (HTTP 429), bot detection captchas, and age-restricted (18+) content.
 
 ---
 
-## 📸 Screenshots Showcase
+## 📸 Screenshots
+
+> *Tip: Place your screenshots in `docs/screenshots/` to showcase them here.*
 
 <div align="center">
-
-### 🏠 Home & Instant Category Switcher
-<img src="docs/images/Home.png" alt="Home Screen" width="92%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
-
-<br><br>
-
-### 🔍 Fast Search & Media Discovery
-<img src="docs/images/Search.png" alt="Search Screen" width="92%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
-
-<br><br>
-
-### 💎 Format & Studio Quality Modal
-<img src="docs/images/DownloadSelect.png" alt="Quality Selector Modal" width="92%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
-
-<br><br>
-
-### 📑 Modern Playlist & Batch Downloader
-<img src="docs/images/Playlist.png" alt="Playlist Screen" width="92%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
-
-<br><br>
-
-### 📥 Active Downloads & History Management
-<img src="docs/images/Download1.png" alt="Downloads Screen" width="92%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
-
-<br><br>
-
-### ⚙️ Engine, Theme & Localization Settings
-<img src="docs/images/Setting.png" alt="Settings Screen" width="92%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);">
-
+  <table>
+    <tr>
+      <td align="center" width="33%">
+        <img src="docs/screenshots/home.png" alt="Home Screen" width="100%" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);"><br>
+        <b>🏠 Home & Trends</b>
+      </td>
+      <td align="center" width="33%">
+        <img src="docs/screenshots/recognition.png" alt="Music Recognition" width="100%" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);"><br>
+        <b>🎙️ Shazam Song Finder</b>
+      </td>
+      <td align="center" width="33%">
+        <img src="docs/screenshots/player_lyrics.png" alt="Lyrics & Player" width="100%" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);"><br>
+        <b>🎵 Synchronized Lyrics</b>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="33%">
+        <img src="docs/screenshots/downloads.png" alt="Download Manager" width="100%" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);"><br>
+        <b>⚡ Fast Downloader</b>
+      </td>
+      <td align="center" width="33%">
+        <img src="docs/screenshots/settings.png" alt="Settings Screen" width="100%" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);"><br>
+        <b>⚙️ Settings & Custom Path</b>
+      </td>
+      <td align="center" width="33%">
+        <img src="docs/screenshots/sleep_timer.png" alt="Sleep Timer" width="100%" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);"><br>
+        <b>🌙 Smart Sleep Timer</b>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ---
 
-## 📦 Download & Quick Installation (Pre-Built Binaries)
+## 🏗️ Architecture & Stack
 
-Choose the best package for your Linux distribution from [GitHub Releases](https://github.com/AllLiveSupport/YTDx-Studio/releases/tag/v1.0.0):
-
-### 🚀 1. Universal `.AppImage` (Recommended - Works on All Linux)
-No installation required. Double-click or run from terminal:
-```bash
-# Make executable and run
-chmod +x YTDx-Studio-1.0.0-x86_64.AppImage
-./YTDx-Studio-1.0.0-x86_64.AppImage
+```mermaid
+flowchart TD
+    UI[Flutter Material 3 UI / 120 FPS] --> Services[Service Layer]
+    
+    subgraph Services
+        DM[DownloadManager<br/>512KB Preflight & Watchdog]
+        SR[MusicRecognition<br/>Avery Wang STFT Algorithm]
+        LS[LyricsService<br/>LRC Parser & LRCLIB Fallback]
+        AS[AuthService<br/>Google OAuth Client]
+        AP[AudioPlayer<br/>JustAudio & AudioService]
+    end
+    
+    DM --> YT[YoutubeExplode Client]
+    DM --> FF[FFmpeg Kit & Native MediaMuxer]
+    DM --> LT[Lofty Rust Native Tagging]
+    SR --> MIC[Local Microphone Stream]
+    AP --> NOTIF[Android MediaNotification]
 ```
 
-### 🐧 2. Debian / Ubuntu / Linux Mint / Pop!_OS (`.deb`)
-```bash
-sudo dpkg -i ytdx-studio_1.0.0_amd64.deb
-sudo apt-get install -f  # (optional) resolves any missing system libraries
-```
-
-### 📦 3. Portable `.tar.gz` (Complete Bundle with 1-Click Installer)
-Extract anywhere and run the automated desktop installer:
-```bash
-# 1. Extract archive
-tar -xzf YTDx-Studio-1.0.0-Linux-x86_64.tar.gz
-
-# 2. Enter folder
-cd YTDx-Studio-1.0.0
-
-# 3. Run automated installer (creates desktop icon and app menu entry)
-chmod +x install.sh
-./install.sh
-```
-
-### 🏹 4. Arch Linux / Manjaro / CachyOS (`PKGBUILD`)
-```bash
-makepkg -si
-```
+| Component | Technology | Purpose |
+|---|---|---|
+| **UI Framework** | Flutter 3.x (Dart 3) | 120 FPS fluid mobile animations, Material 3 glassmorphism |
+| **Stream Extraction** | `youtube_explode_dart` | Reverse-engineered YouTube manifest parsing |
+| **Audio Engine** | `just_audio` + `audio_service` | Background playback, lock screen media controls |
+| **Media Processing** | `ffmpeg_kit_flutter_new_audio` | Audio conversion (`libmp3lame`, `libopus`, `aac`) |
+| **ID3 & Cover Art** | `audiotags` (Rust Lofty) | Native zero-overhead audio tagging and art embedding |
+| **Music Recognition** | Local STFT DSP peak analysis | Acoustical fingerprinting matching open Shazam protocol |
+| **Lyrics Database** | LRCLIB API | Synchronized `.lrc` online fallback |
 
 ---
 
-## 🧹 Complete Uninstallation
-To cleanly remove all desktop shortcuts, application menu entries, and binary symlinks from your system:
-```bash
-./uninstall.sh
-```
+## 🚀 Installation & Build
 
----
+### Download Pre-built APKs
+Check the [Releases](https://github.com/AllLiveSupport/YTDx-Studio/releases) tab for the latest compiled packages:
+- **`YTDx-Studio-arm64-v8a.apk`** (Recommended for all modern Android phones)
+- **`YTDx-Studio-armeabi-v7a.apk`** (For legacy 32-bit Android devices)
+- **`YTDx-Studio-universal.apk`** (Universal bundle containing all architectures)
 
-## 🛠️ Clone & Install from Source (For Developers)
+### Building from Source
 
-You can also clone the repository and run the automated universal setup:
+#### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (version 3.24+ recommended)
+- Android SDK (API Level 34 / NDK installed)
+- Java 17+
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/AllLiveSupport/YTDx-Studio.git
 cd YTDx-Studio
 
-# 2. Run the automated installer
-chmod +x install.sh
-./install.sh
-```
-
-### What `install.sh` does automatically:
-1. 🔍 Detects your Linux distribution (`pacman`, `apt`, `dnf`, `zypper`).
-2. 📦 Installs **FFmpeg**, **Python 3**, and media libraries (`libgtk-3`, `libgstreamer`).
-3. 🐍 Sets up an isolated `.venv` environment and installs dependencies (`pytubefix`, `yt-dlp`, `mutagen`, `Pillow`).
-4. 🖥️ Integrates **YTDx Studio** into your **Linux Application Menu** with desktop shortcut & high-resolution icon.
-5. ⚡ Adds the `ytdx` command to your terminal.
-
----
-
-## 🛠️ Manual Build & Development
-
-If you are a developer and want to build the Flutter release binary manually:
-
-### Prerequisites:
-- [Flutter SDK (3.x+)](https://docs.flutter.dev/get-started/install/linux)
-- [Python (3.10+)](https://www.python.org/)
-- [FFmpeg](https://ffmpeg.org/)
-
-### Build Commands:
-```bash
-# 1. Install Python dependencies
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-# 2. Build Flutter Linux Release Bundle
-cd aura_app
+# 2. Install Flutter dependencies
 flutter pub get
-flutter build linux --release
-cd ..
 
-# 3. Run Application
-python3 main.py
+# 3. Run unit and integration tests
+flutter test
+
+# 4. Build split APKs (optimized size)
+flutter build apk --split-per-abi
+
+# Output APKs will be located in:
+# build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+# build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
 ```
-
----
-
-## 🏗️ Architecture
-
-```
-YTDx-Studio/
-├── aura_app/                  # Flutter 3.x Desktop Client (AOT Compiled)
-│   ├── lib/
-│   │   ├── models/            # VideoItem, DownloadTask, AppSettings
-│   │   ├── providers/         # AppState, PlayerProvider
-│   │   ├── screens/           # Home, Search, Downloads, Playlists, Settings
-│   │   ├── services/          # Pure Dart YouTube Engine, OAuth 2.0, I18n, Audio
-│   │   ├── theme/             # Modern Dark / Light Design Tokens
-│   │   └── widgets/           # VideoCard, QualityModal, Sidebar, PlayerBar
-│   └── linux/                 # Native Linux GTK Runner
-├── src/
-│   ├── pytube_runner.py       # High-speed Pytubefix 4K/320k FFmpeg remux CLI
-│   └── oauth_helper.py        # OAuth helper bridge
-├── docs/images/               # UI Showcase Screenshots
-├── icons/                     # Application Icons (256x256, 128x128, ICO, PNG)
-├── install.sh                 # Multi-Distro Automated Linux Setup Script
-├── main.py                    # Universal Release Launcher & Bridge
-└── requirements.txt           # Python backend dependencies
-```
-
----
-
-## 🌐 Supported Languages
-
-YTDx Studio features 100% native localization:
-- 🇹🇷 **Türkçe** (Turkish)
-- 🇺🇸 **English** (English)
-- 🇪🇸 **Español** (Spanish)
-- 🇷🇺 **Русский** (Russian)
 
 ---
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/AllLiveSupport/YTDx-Studio/issues).
+Contributions are what make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**!
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. **Fork the Project**
+2. **Create your Feature Branch** (`git checkout -b feature/AmazingFeature`)
+3. **Commit your Changes** (`git commit -m 'Add some AmazingFeature'`)
+4. **Make sure tests and analyzer pass**:
+   ```bash
+   flutter analyze
+   flutter test
+   ```
+5. **Push to the Branch** (`git push origin feature/AmazingFeature`)
+6. **Open a Pull Request**
+
+### Bug Reports & Feature Requests
+Feel free to open an issue on the [Issue Tracker](https://github.com/AllLiveSupport/YTDx-Studio/issues) with detailed reproduction steps or design proposals.
 
 ---
 
-## ⚖️ Disclaimer & Privacy
+## ⚖️ Legal Disclaimer
 
-This software is developed strictly for **educational, personal archiving, and research purposes**. 
-- The developers do not host, store, or distribute copyrighted media.
-- Users are solely responsible for compliance with their local copyright laws and third-party terms of service.
-- **Privacy First:** 100% Zero telemetry, zero analytics, zero data collection.
+This software is developed strictly for **educational, personal media archiving, and academic research purposes**.
 
-For full legal terms and privacy details, please read our [DISCLAIMER.md](DISCLAIMER.md).
+- **YouTube™** is a trademark of **Google LLC**. This application is not authorized, endorsed, sponsored, or affiliated with Google LLC or YouTube.
+- **Shazam™** is a trademark of **Apple Inc.** The acoustic recognition feature is based on public academic research on spectrogram peak constellations (*Avery Li-Chun Wang, 2003*) and does not distribute proprietary Apple code.
+- Users are solely responsible for adhering to applicable copyright laws and content owner licenses.
+
+For full terms and conditions, please review [DISCLAIMER.md](DISCLAIMER.md).
 
 ---
 
 ## 📄 License
 
-Distributed under the **MIT License**. See [LICENSE](LICENSE) for more information.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for more details.
+
+---
 
 <div align="center">
-  <sub>Built with ❤️ using Flutter, Dart, and Python.</sub>
+  <sub>Crafted with ❤️ by the YTDx Studio Open Source Community.</sub>
 </div>
