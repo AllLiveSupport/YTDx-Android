@@ -28,10 +28,10 @@ build/
 .pub/
 coverage/
 
-# Android specific
+# Android & Gradle specific
 **/android/local.properties
 **/android/key.properties
-**/android/.gradle/
+**/.gradle/
 **/android/app/build/
 **/android/app/debug/
 **/android/app/profile/
