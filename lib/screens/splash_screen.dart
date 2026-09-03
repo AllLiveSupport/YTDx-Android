@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../main.dart' show MainShell;
 import '../theme/app_colors.dart';
 import '../services/haptic_service.dart';
+import '../services/i18n.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -302,7 +303,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           child: Text(
-                            'ULTRA HD & LOSSLESS MEDIA STUDIO',
+                            I18n.tr('splash_tagline'),
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
@@ -400,15 +401,15 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       children: [
                         Text(
-                          'v2.5.0 • Powered by Lossless Engine',
+                          I18n.tr('splash_engine_desc'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                             letterSpacing: 0.5,
-                            color: Colors.white.withValues(alpha: 0.4),
+                            color: Colors.white.withValues(alpha: 0.45),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           'AllLiveSupport / YTDx Studio',
                           style: TextStyle(

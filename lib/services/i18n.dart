@@ -283,6 +283,11 @@ class I18n {
       'settings_oauth_open_device': 'google.com/device Aç',
       'settings_btn_ok': 'Tamam',
       'settings_btn_retry': 'Tekrar Dene',
+
+      // Splash Screen
+      'splash_tagline': 'ULTRA HD & KAYIPSIZ MEDYA STÜDYOSU',
+      'splash_engine_desc': 'v2.5.0 • Kayıpsız Ses & HD Video Motoru',
+      'splash_skip_hint': 'Atlamak için dokunun',
     },
 
     'en': {
@@ -547,6 +552,11 @@ class I18n {
       'settings_oauth_open_device': 'Open google.com/device',
       'settings_btn_ok': 'OK',
       'settings_btn_retry': 'Retry',
+
+      // Splash Screen
+      'splash_tagline': 'ULTRA HD & LOSSLESS MEDIA STUDIO',
+      'splash_engine_desc': 'v2.5.0 • Powered by Lossless Engine',
+      'splash_skip_hint': 'Tap to skip',
     },
 
     'es': {
@@ -811,6 +821,11 @@ class I18n {
       'settings_oauth_open_device': 'Abrir google.com/device',
       'settings_btn_ok': 'Aceptar',
       'settings_btn_retry': 'Reintentar',
+
+      // Splash Screen
+      'splash_tagline': 'ESTUDIO DE MEDIOS ULTRA HD Y SIN PÉRDIDAS',
+      'splash_engine_desc': 'v2.5.0 • Motor de Audio y Video sin Pérdidas',
+      'splash_skip_hint': 'Toca para omitir',
     },
 
     'ru': {
@@ -1075,6 +1090,11 @@ class I18n {
       'settings_oauth_open_device': 'Открыть google.com/device',
       'settings_btn_ok': 'ОК',
       'settings_btn_retry': 'Повторить',
+
+      // Splash Screen
+      'splash_tagline': 'МЕДИАСТУДИЯ ULTRA HD И БЕЗ ПОТЕРЬ',
+      'splash_engine_desc': 'v2.5.0 • Движок аудио без потерь и HD видео',
+      'splash_skip_hint': 'Нажмите, чтобы пропустить',
     },
   };
 }
