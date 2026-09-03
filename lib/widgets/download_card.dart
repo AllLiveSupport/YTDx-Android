@@ -13,7 +13,7 @@ class DownloadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
+    final appState = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final percentText = task.status == DownloadStatus.queued

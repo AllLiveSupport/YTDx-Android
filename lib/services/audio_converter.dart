@@ -62,6 +62,7 @@ class AudioConverter {
       }
       args = [
         '-y',
+        '-threads', '2',
         '-i', inputPath,
         '-vn',
         '-c:a', 'libmp3lame',
@@ -75,6 +76,7 @@ class AudioConverter {
         // Kaynak zaten WebM/Opus olduğunda akış kopyalama (stream copy) en hızlı ve kayıpsızdır
         args = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'copy',
@@ -84,6 +86,7 @@ class AudioConverter {
         // Kaynak MP4/Muxed (AAC) olduğunda -c:a copy başarısız olur; doğrudan libopus ile kodla
         args = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'libopus',
@@ -97,6 +100,7 @@ class AudioConverter {
         // Kaynak zaten MP4/AAC olduğunda kayıpsız stream copy
         args = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'copy',
@@ -107,6 +111,7 @@ class AudioConverter {
         int bitrate = q.contains('128') ? 128 : 256;
         args = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'aac',
@@ -138,6 +143,7 @@ class AudioConverter {
         AppLogger.warn(_tag, 'Stream copy başarısız, libopus ile yeniden kodlanıyor...');
         final fallbackArgs = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'libopus',
@@ -155,6 +161,7 @@ class AudioConverter {
         AppLogger.warn(_tag, 'libopus başarısız, native opus (-strict -2) deneniyor...');
         final nativeOpusArgs = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'opus',
@@ -173,6 +180,7 @@ class AudioConverter {
         AppLogger.warn(_tag, 'Stream copy başarısız, aac ile yeniden kodlanıyor...');
         final fallbackArgs = [
           '-y',
+          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'aac',

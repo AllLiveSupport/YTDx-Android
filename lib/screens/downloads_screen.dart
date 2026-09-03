@@ -316,40 +316,42 @@ class _DownloadsScreenState extends State<DownloadsScreen>
               ),
             )
           else if (completedTasks.isNotEmpty)
-            isMobile
-                ? ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: completedTasks.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final task = completedTasks[index];
-                      return HistoryCard(
-                        task: task,
-                        isGrid: false,
-                        onRemove: () => _onDeleteTask(appState, task),
-                      );
-                    },
-                  )
-                : GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.82,
+            RepaintBoundary(
+              child: isMobile
+                  ? ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: completedTasks.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final task = completedTasks[index];
+                        return HistoryCard(
+                          task: task,
+                          isGrid: false,
+                          onRemove: () => _onDeleteTask(appState, task),
+                        );
+                      },
+                    )
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.82,
+                      ),
+                      itemCount: completedTasks.length,
+                      itemBuilder: (context, index) {
+                        final task = completedTasks[index];
+                        return HistoryCard(
+                          task: task,
+                          isGrid: true,
+                          onRemove: () => _onDeleteTask(appState, task),
+                        );
+                      },
                     ),
-                    itemCount: completedTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = completedTasks[index];
-                      return HistoryCard(
-                        task: task,
-                        isGrid: true,
-                        onRemove: () => _onDeleteTask(appState, task),
-                      );
-                    },
-                  ),
+            ),
         ],
       ),
     );

@@ -301,13 +301,13 @@ if (name.startsWith(baseTitle)) {
       int downloaded = 0;
       int bytesSinceLastTick = 0;
       int lastTickMs = 0;
+      int lastChunkTimeMs = DateTime.now().millisecondsSinceEpoch;
 
       // Hızlı ve duyarlı watchdog: İlk bayt için 4 sn, aktif indirme için 8 sn limit
-      const initialConnectLimit = Duration(seconds: 4);
-      const activeInactivityLimit = Duration(seconds: 8);
+      const initialConnectLimitMs = 4000;
+      const activeInactivityLimitMs = 8000;
       Timer? watchdog;
       bool timedOut = false;
-      final proxyCtrl = StreamController<List<int>>();
 
       try {
         sink = targetFile.openWrite(mode: FileMode.writeOnly);
@@ -315,50 +315,35 @@ if (name.startsWith(baseTitle)) {
         // Doğrudan YoutubeExplode üzerinden tek parça akış al
         final rawStream = yt.videos.streamsClient.get(streamInfo);
 
-        watchdog = Timer(initialConnectLimit, () {
-          if (!proxyCtrl.isClosed) {
+        // Tekil periyodik watchdog: Her chunk başına Timer tahsis edip iptal etmek yerine
+        // 500ms'de bir son chunk zamanını kontrol eder (Sıfır bellek ve CPU yükü)
+        watchdog = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+          if (task.status == DownloadStatus.cancelled) {
+            timer.cancel();
+            return;
+          }
+          final now = DateTime.now().millisecondsSinceEpoch;
+          final diff = now - lastChunkTimeMs;
+          final maxAllowed = (downloaded == 0) ? initialConnectLimitMs : activeInactivityLimitMs;
+          if (diff >= maxAllowed) {
             timedOut = true;
-            proxyCtrl.addError(TimeoutException(
-                'Akış başlangıç zaman aşımı (${initialConnectLimit.inSeconds}s, itag=${streamInfo.tag})'));
-            proxyCtrl.close();
+            timer.cancel();
+            AppLogger.warn(_tag, '⏰ itag=${streamInfo.tag} hareketsizlik (${diff}ms)');
           }
         });
 
-        rawStream.listen(
-          (chunk) {
-            watchdog?.cancel();
-            watchdog = Timer(activeInactivityLimit, () {
-              if (!proxyCtrl.isClosed) {
-                timedOut = true;
-                proxyCtrl.addError(TimeoutException(
-                    '${activeInactivityLimit.inSeconds}s hareketsizlik (itag=${streamInfo.tag})'));
-                proxyCtrl.close();
-              }
-            });
-            if (!proxyCtrl.isClosed) proxyCtrl.add(chunk);
-          },
-          onError: (e) {
-            if (!proxyCtrl.isClosed) {
-              proxyCtrl.addError(e);
-              proxyCtrl.close();
-            }
-          },
-          onDone: () {
-            watchdog?.cancel();
-            if (!proxyCtrl.isClosed) proxyCtrl.close();
-          },
-          cancelOnError: true,
-        );
+        // Doğrudan akışı tüket (ara StreamController kopyalaması olmadan yüksek performans)
+        await for (final chunk in rawStream) {
+          if (task.status == DownloadStatus.cancelled || timedOut) break;
 
-        await for (final chunk in proxyCtrl.stream) {
-          if (task.status == DownloadStatus.cancelled) break;
-
+          lastChunkTimeMs = DateTime.now().millisecondsSinceEpoch;
           sink.add(chunk);
           downloaded += chunk.length;
           bytesSinceLastTick += chunk.length;
 
           final elapsedMs = stopwatch.elapsedMilliseconds;
-          if (elapsedMs - lastTickMs >= 300 || (expectedBytes > 0 && downloaded >= expectedBytes)) {
+          // 450ms dengeli UI güncelleme sıklığı: Donanım ve UI'ı yormadan akıcı gösterim
+          if (elapsedMs - lastTickMs >= 450 || (expectedBytes > 0 && downloaded >= expectedBytes)) {
             final deltaSec = (elapsedMs - lastTickMs) / 1000.0;
             if (deltaSec > 0) {
               final currentSpeedMbps = (bytesSinceLastTick / (1024 * 1024)) / deltaSec;
@@ -377,8 +362,6 @@ if (name.startsWith(baseTitle)) {
               }
             }
 
-            // Always use actual downloaded bytes for progress — not manifest expectedBytes
-            // because DASH manifests may report compressed size (webm container metadata)
             final displayTotal = expectedBytes > 0 ? expectedBytes : downloaded + 1;
             final subFraction = (downloaded / displayTotal).clamp(0.0, 1.0);
             task.progress = (progressStart + subFraction * progressWeight).clamp(0.0, 1.0);
@@ -386,13 +369,10 @@ if (name.startsWith(baseTitle)) {
                 ? '${(downloaded / (1024 * 1024)).toStringAsFixed(1)} MB / ${(expectedBytes / (1024 * 1024)).toStringAsFixed(1)} MB'
                 : '${(downloaded / (1024 * 1024)).toStringAsFixed(1)} MB indirildi';
             onUpdate();
-
-            // Yield to event loop so audio playback platform channels get CPU time
-            await Future.delayed(Duration.zero);
           }
         }
 
-        watchdog?.cancel();
+        watchdog.cancel();
         await sink.flush();
         await sink.close();
         sink = null;
@@ -400,7 +380,7 @@ if (name.startsWith(baseTitle)) {
 
         // Validate: file must exist and have meaningful data
         final diskSize = targetFile.existsSync() ? targetFile.lengthSync() : 0;
-        if (diskSize > 0 && task.status != DownloadStatus.cancelled) {
+        if (!timedOut && diskSize > 0 && task.status != DownloadStatus.cancelled) {
           // Show actual disk size (not manifest size) to avoid "MB decreasing" confusion
           task.progress = (progressStart + progressWeight).clamp(0.0, 1.0);
           task.sizeInfo = '${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB / ${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB';
@@ -424,9 +404,6 @@ if (name.startsWith(baseTitle)) {
         }
       } finally {
         watchdog?.cancel();
-        if (!proxyCtrl.isClosed) {
-          try { proxyCtrl.close(); } catch (_) {}
-        }
         if (sink != null) {
           try { await sink.close(); } catch (_) {}
         }
