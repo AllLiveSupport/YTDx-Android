@@ -18,7 +18,40 @@ class MainActivity : AudioServiceActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableHighRefreshRate()
         handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        enableHighRefreshRate()
+    }
+
+    private fun enableHighRefreshRate() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val display = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    display
+                } else {
+                    @Suppress("DEPRECATION")
+                    windowManager.defaultDisplay
+                }
+                val modes = display?.supportedModes
+                if (!modes.isNullOrEmpty()) {
+                    var bestMode = modes[0]
+                    for (mode in modes) {
+                        if (mode.refreshRate > bestMode.refreshRate) {
+                            bestMode = mode
+                        }
+                    }
+                    val params = window.attributes
+                    params.preferredDisplayModeId = bestMode.modeId
+                    window.attributes = params
+                }
+            }
+        } catch (_: Exception) {
+            // Fallback gracefully on devices that do not permit display mode switching
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

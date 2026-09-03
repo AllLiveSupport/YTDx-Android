@@ -285,9 +285,8 @@ class I18n {
       'settings_btn_retry': 'Tekrar Dene',
 
       // Splash Screen
-      'splash_tagline': 'ULTRA HD & KAYIPSIZ MEDYA STÜDYOSU',
-      'splash_engine_desc': 'v2.5.0 • Kayıpsız Ses & HD Video Motoru',
-      'splash_skip_hint': 'Atlamak için dokunun',
+      'splash_subtitle': 'ULTRA HD & KAYIPSIZ MEDYA STÜDYOSU',
+      'splash_engine_badge': 'v2.5.0 • Kayıpsız Motor ile Güçlendirildi',
     },
 
     'en': {
@@ -554,9 +553,8 @@ class I18n {
       'settings_btn_retry': 'Retry',
 
       // Splash Screen
-      'splash_tagline': 'ULTRA HD & LOSSLESS MEDIA STUDIO',
-      'splash_engine_desc': 'v2.5.0 • Powered by Lossless Engine',
-      'splash_skip_hint': 'Tap to skip',
+      'splash_subtitle': 'ULTRA HD & LOSSLESS MEDIA STUDIO',
+      'splash_engine_badge': 'v2.5.0 • Powered by Lossless Engine',
     },
 
     'es': {
@@ -823,9 +821,8 @@ class I18n {
       'settings_btn_retry': 'Reintentar',
 
       // Splash Screen
-      'splash_tagline': 'ESTUDIO DE MEDIOS ULTRA HD Y SIN PÉRDIDAS',
-      'splash_engine_desc': 'v2.5.0 • Motor de Audio y Video sin Pérdidas',
-      'splash_skip_hint': 'Toca para omitir',
+      'splash_subtitle': 'ESTUDIO DE MEDIOS ULTRA HD Y SIN PÉRDIDAS',
+      'splash_engine_badge': 'v2.5.0 • Con Tecnología de Motor Sin Pérdidas',
     },
 
     'ru': {
@@ -1092,9 +1089,8 @@ class I18n {
       'settings_btn_retry': 'Повторить',
 
       // Splash Screen
-      'splash_tagline': 'МЕДИАСТУДИЯ ULTRA HD И БЕЗ ПОТЕРЬ',
-      'splash_engine_desc': 'v2.5.0 • Движок аудио без потерь и HD видео',
-      'splash_skip_hint': 'Нажмите, чтобы пропустить',
+      'splash_subtitle': 'ULTRA HD И LOSSLESS МЕДИА СТУДИЯ',
+      'splash_engine_badge': 'v2.5.0 • На базе Lossless Движка',
     },
   };
 }

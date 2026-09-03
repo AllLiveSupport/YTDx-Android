@@ -252,6 +252,9 @@ if (name.startsWith(baseTitle)) {
     } catch (_) {}
   }
 
+  /// Direct Native Stream Downloader with chunk-based in  /// Direct Native Stream Downloader with chunk-based inactivity watchdog.
+  /// Each received chunk resets the watchdog timer — this correctly handles
+  /// YouTube DASH streams that stall between segments without closing the TCP socket.
   static Future<StreamInfo?> _downloadDirectStream({
     required YoutubeExplode yt,
     required List<StreamInfo> streamCandidates,
@@ -261,48 +264,28 @@ if (name.startsWith(baseTitle)) {
     double progressStart = 0.0,
     double progressWeight = 1.0,
   }) async {
-    int consecutiveAdaptiveFailures = 0;
-
-    for (int i = 0; i < streamCandidates.length; i++) {
-      final streamInfo = streamCandidates[i];
+    for (final streamInfo in streamCandidates) {
       if (task.status == DownloadStatus.cancelled) break;
-
-      final isMuxed = streamInfo is MuxedStreamInfo || streamInfo.tag == 18 || streamInfo.tag == 22;
-
-      // ⚡ FAST-JUMP TO MUXED:
-      // Eğer ilk 2 tekil adaptif akış (audioOnly veya videoOnly) 403 veya timeout verirse,
-      // YouTube bu IP'de DASH akışlarını kısıtlamıştır. Geri kalan adayları 4'er sn bekletmeden
-      // doğrudan güvenli Muxed akışına (itag 18 / 22) zıpla! (10-12s bekleme 1-2s'ye düşer)
-      if (!isMuxed && consecutiveAdaptiveFailures >= 2) {
-        final muxedIndex = streamCandidates.indexWhere(
-          (s) => s is MuxedStreamInfo || s.tag == 18 || s.tag == 22,
-        );
-        if (muxedIndex > i) {
-          AppLogger.warn(_tag, '⚡ DASH akışları kısıtlandı ($consecutiveAdaptiveFailures ardışık hata), doğrudan Muxed akışına (itag=${streamCandidates[muxedIndex].tag}) atlanıyor!');
-          i = muxedIndex - 1; // döngü bir sonraki adımda muxedIndex'e geçer
-          consecutiveAdaptiveFailures = 0;
-          continue;
-        }
-      }
 
       final expectedBytes = streamInfo.size.totalBytes;
       AppLogger.info(_tag, '🚀 Stream deneniyor: itag=${streamInfo.tag}, ${streamInfo.size.totalMegaBytes.toStringAsFixed(1)} MB (${streamInfo.container.name})');
 
       // ⚡ Hızlı Ön Denetim (~25ms): YouTube bu akış için 403 Forbidden veya kısıtlama koydu mu?
+      // Müzik/VEVO videolarında tekil DASH akışları 403 verebilir.
+      // 512 KB blok kontrolü ile ~25ms içinde engelliyse hemen sonrakine geç!
       try {
         final client = http.Client();
         final preReq = http.Request('GET', streamInfo.url);
         preReq.headers['Range'] = 'bytes=0-524288';
         final preRes = await client
             .send(preReq)
-            .timeout(const Duration(milliseconds: 700));
+            .timeout(const Duration(milliseconds: 1500));
         unawaited(preRes.stream.drain().catchError((_) => null));
         client.close();
 
         if (preRes.statusCode != 206 && preRes.statusCode != 200) {
           AppLogger.warn(_tag,
               '⛔ itag=${streamInfo.tag} YouTube tarafından engellendi (${preRes.statusCode}), sonraki alternatife geçiliyor (~25ms)');
-          if (!isMuxed) consecutiveAdaptiveFailures++;
           continue;
         }
       } catch (_) {
@@ -314,15 +297,14 @@ if (name.startsWith(baseTitle)) {
       }
 
       IOSink? sink;
-      StreamSubscription<List<int>>? rawSub;
       final stopwatch = Stopwatch()..start();
       int downloaded = 0;
       int bytesSinceLastTick = 0;
       int lastTickMs = 0;
 
-      // Mobil ağ şartlarına uyarlanmış güvenli watchdog: İlk bağlantı 6 sn, hareketsizlik 18 sn limit
-      const initialConnectLimit = Duration(seconds: 6);
-      const activeInactivityLimit = Duration(seconds: 18);
+      // Hızlı ve duyarlı watchdog: İlk bayt için 4 sn, aktif indirme için 8 sn limit
+      const initialConnectLimit = Duration(seconds: 4);
+      const activeInactivityLimit = Duration(seconds: 8);
       Timer? watchdog;
       bool timedOut = false;
       final proxyCtrl = StreamController<List<int>>();
@@ -339,11 +321,10 @@ if (name.startsWith(baseTitle)) {
             proxyCtrl.addError(TimeoutException(
                 'Akış başlangıç zaman aşımı (${initialConnectLimit.inSeconds}s, itag=${streamInfo.tag})'));
             proxyCtrl.close();
-            try { rawSub?.cancel(); } catch (_) {}
           }
         });
 
-        rawSub = rawStream.listen(
+        rawStream.listen(
           (chunk) {
             watchdog?.cancel();
             watchdog = Timer(activeInactivityLimit, () {
@@ -352,7 +333,6 @@ if (name.startsWith(baseTitle)) {
                 proxyCtrl.addError(TimeoutException(
                     '${activeInactivityLimit.inSeconds}s hareketsizlik (itag=${streamInfo.tag})'));
                 proxyCtrl.close();
-                try { rawSub?.cancel(); } catch (_) {}
               }
             });
             if (!proxyCtrl.isClosed) proxyCtrl.add(chunk);
@@ -361,7 +341,6 @@ if (name.startsWith(baseTitle)) {
             if (!proxyCtrl.isClosed) {
               proxyCtrl.addError(e);
               proxyCtrl.close();
-              try { rawSub?.cancel(); } catch (_) {}
             }
           },
           onDone: () {
@@ -379,7 +358,7 @@ if (name.startsWith(baseTitle)) {
           bytesSinceLastTick += chunk.length;
 
           final elapsedMs = stopwatch.elapsedMilliseconds;
-          if (elapsedMs - lastTickMs >= 450 || (expectedBytes > 0 && downloaded >= expectedBytes)) {
+          if (elapsedMs - lastTickMs >= 300 || (expectedBytes > 0 && downloaded >= expectedBytes)) {
             final deltaSec = (elapsedMs - lastTickMs) / 1000.0;
             if (deltaSec > 0) {
               final currentSpeedMbps = (bytesSinceLastTick / (1024 * 1024)) / deltaSec;
@@ -408,14 +387,12 @@ if (name.startsWith(baseTitle)) {
                 : '${(downloaded / (1024 * 1024)).toStringAsFixed(1)} MB indirildi';
             onUpdate();
 
-            // Yield to event loop so UI thread and audio playback get CPU time
+            // Yield to event loop so audio playback platform channels get CPU time
             await Future.delayed(Duration.zero);
           }
         }
 
         watchdog?.cancel();
-        try { await rawSub.cancel(); } catch (_) {}
-        rawSub = null;
         await sink.flush();
         await sink.close();
         sink = null;
@@ -424,23 +401,19 @@ if (name.startsWith(baseTitle)) {
         // Validate: file must exist and have meaningful data
         final diskSize = targetFile.existsSync() ? targetFile.lengthSync() : 0;
         if (diskSize > 0 && task.status != DownloadStatus.cancelled) {
+          // Show actual disk size (not manifest size) to avoid "MB decreasing" confusion
           task.progress = (progressStart + progressWeight).clamp(0.0, 1.0);
           task.sizeInfo = '${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB / ${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB';
           onUpdate();
           AppLogger.success(_tag, '✅ itag=${streamInfo.tag} tamamlandı: ${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB disk');
           return streamInfo;
         } else if (timedOut) {
-          if (!isMuxed) consecutiveAdaptiveFailures++;
           AppLogger.warn(_tag, '⏰ itag=${streamInfo.tag} zaman aşımına uğradı, sıradakine geçiliyor');
         } else {
-          if (!isMuxed) consecutiveAdaptiveFailures++;
           AppLogger.warn(_tag, '⚠ itag=${streamInfo.tag} indirme doğrulama başarısız ($diskSize bytes), sıradakine geçiliyor');
         }
       } catch (e) {
-        if (!isMuxed) consecutiveAdaptiveFailures++;
         watchdog?.cancel();
-        try { await rawSub?.cancel(); } catch (_) {}
-        rawSub = null;
         AppLogger.warn(_tag, '⚠ Stream hatası (itag=${streamInfo.tag}): $e');
         if (sink != null) {
           try { await sink.close(); } catch (_) {}
@@ -451,14 +424,11 @@ if (name.startsWith(baseTitle)) {
         }
       } finally {
         watchdog?.cancel();
-        try { await rawSub?.cancel(); } catch (_) {}
-        rawSub = null;
         if (!proxyCtrl.isClosed) {
           try { proxyCtrl.close(); } catch (_) {}
         }
         if (sink != null) {
           try { await sink.close(); } catch (_) {}
-          sink = null;
         }
       }
     }
@@ -488,16 +458,8 @@ if (name.startsWith(baseTitle)) {
           requireWatchPage: false,
         );
       } catch (e) {
-        AppLogger.warn(_tag, 'Client manifest hatası: $e, temiz bağımsız istemci deneniyor...');
-        final cleanYt = YoutubeExplode();
-        try {
-          manifest = await cleanYt.videos.streamsClient.getManifest(videoId);
-          yt.close();
-          yt = cleanYt; // Temiz istemci oturumu devralsın
-        } catch (e2) {
-          cleanYt.close();
-          rethrow;
-        }
+        AppLogger.warn(_tag, 'Client manifest hatası: $e, varsayılan deneniyor');
+        manifest = await yt.videos.streamsClient.getManifest(videoId);
       }
       AppLogger.info(_tag, '🎯 Muxed: ${manifest.muxed.length} | AudioOnly: ${manifest.audioOnly.length} | VideoOnly: ${manifest.videoOnly.length}');
 
@@ -726,62 +688,34 @@ if (name.startsWith(baseTitle)) {
           // AUTO: En yüksek çözünürlük ve bitrate akışları en başta
           videoCandidates.addAll(allVideos);
         } else {
-          int parseTargetHeight(String query) {
-            if (query.contains('4320') || query.contains('8k')) return 4320;
-            if (query.contains('2160') || query.contains('4k')) return 2160;
-            if (query.contains('1440') || query.contains('2k')) return 1440;
-            if (query.contains('1080')) return 1080;
-            if (query.contains('720')) return 720;
-            if (query.contains('480')) return 480;
-            if (query.contains('360')) return 360;
-            if (query.contains('240')) return 240;
-            if (query.contains('144')) return 144;
-            return -1;
+          List<VideoStreamInfo> findMatches(String label) {
+            final matches = allVideos.where((s) => s.qualityLabel.toLowerCase().contains(label)).toList();
+            matches.sort((a, b) => b.bitrate.compareTo(a.bitrate));
+            return matches;
           }
 
-          int getStreamHeight(VideoStreamInfo s) {
-            final match = RegExp(r'(\d+)p').firstMatch(s.qualityLabel);
-            if (match != null) {
-              return int.tryParse(match.group(1)!) ?? 0;
-            }
-            return 0;
+          if (q.contains('4320') || q.contains('8k')) {
+            videoCandidates.addAll(findMatches('4320'));
+            videoCandidates.addAll(findMatches('8k'));
+          } else if (q.contains('2160') || q.contains('4k')) {
+            videoCandidates.addAll(findMatches('2160'));
+            videoCandidates.addAll(findMatches('4k'));
+          } else if (q.contains('1440') || q.contains('2k')) {
+            videoCandidates.addAll(findMatches('1440'));
+            videoCandidates.addAll(findMatches('2k'));
+          } else if (q.contains('1080')) {
+            videoCandidates.addAll(findMatches('1080'));
+          } else if (q.contains('720')) {
+            videoCandidates.addAll(findMatches('720'));
+          } else if (q.contains('480')) {
+            videoCandidates.addAll(findMatches('480'));
+          } else if (q.contains('360')) {
+            videoCandidates.addAll(findMatches('360'));
           }
 
-          final targetHeight = parseTargetHeight(q);
-          if (targetHeight > 0) {
-            // 1. Tam eşleşen çözünürlük (Örn: 480p)
-            final exact = allVideos
-                .where((s) => getStreamHeight(s) == targetHeight)
-                .toList()
-              ..sort((a, b) => b.bitrate.compareTo(a.bitrate));
-            videoCandidates.addAll(exact);
-
-            // 2. En yakın ALT çözünürlük (Örn: 480p videoda yoksa 360p, 240p)
-            // Bu kullanıcının kotasını korur ve 480p isteyen kullanıcıya zorla 4K/1080p indirmez!
-            final lower = allVideos
-                .where((s) => getStreamHeight(s) > 0 && getStreamHeight(s) < targetHeight)
-                .toList()
-              ..sort((a, b) {
-                final diffA = (targetHeight - getStreamHeight(a)).abs();
-                final diffB = (targetHeight - getStreamHeight(b)).abs();
-                if (diffA != diffB) return diffA.compareTo(diffB);
-                return b.bitrate.compareTo(a.bitrate);
-              });
-            videoCandidates.addAll(lower);
-
-            // 3. Alt çözünürlük yoksa en yakın ÜST (Örn: 720p - 4K değil!)
-            final higher = allVideos
-                .where((s) => getStreamHeight(s) > targetHeight)
-                .toList()
-              ..sort((a, b) {
-                final diffA = (getStreamHeight(a) - targetHeight).abs();
-                final diffB = (getStreamHeight(b) - targetHeight).abs();
-                if (diffA != diffB) return diffA.compareTo(diffB);
-                return b.bitrate.compareTo(a.bitrate);
-              });
-            videoCandidates.addAll(higher);
-          } else {
-            videoCandidates.addAll(allVideos);
+          // Diğer çözünürlükleri fallback olarak ekle
+          for (final s in allVideos) {
+            if (!videoCandidates.contains(s)) videoCandidates.add(s);
           }
         }
 

@@ -303,7 +303,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           child: Text(
-                            I18n.tr('splash_tagline'),
+                            I18n.tr('splash_subtitle'),
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
@@ -401,15 +401,15 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       children: [
                         Text(
-                          I18n.tr('splash_engine_desc'),
+                          I18n.tr('splash_engine_badge'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                             letterSpacing: 0.5,
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color: Colors.white.withValues(alpha: 0.4),
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
                         Text(
                           'AllLiveSupport / YTDx Studio',
                           style: TextStyle(

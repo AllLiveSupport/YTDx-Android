@@ -405,34 +405,20 @@ class AppState extends ChangeNotifier {
     task.status = DownloadStatus.downloading;
     notifyListeners();
 
-    int lastNotifyMs = 0;
-    final notifyStopwatch = Stopwatch()..start();
-
     DownloadManager.executeDownload(
       task: task,
       settings: settings,
       onUpdate: () {
-        final isFinished = task.status == DownloadStatus.completed ||
-            task.status == DownloadStatus.failed ||
-            task.status == DownloadStatus.cancelled;
-
         if (task.status == DownloadStatus.completed) {
           if (!completedTasks.any((ct) => ct.id == task.id)) {
             completedTasks.insert(0, task);
             _saveHistory();
           }
         }
-
-        // Throttle notifyListeners to 450ms during active downloading to keep UI at 60-90 FPS.
-        // Always notify immediately when task finishes, fails or cancels.
-        final nowMs = notifyStopwatch.elapsedMilliseconds;
-        if (isFinished || nowMs - lastNotifyMs >= 450) {
-          lastNotifyMs = nowMs;
-          notifyListeners();
-        }
+        notifyListeners();
 
         // When task finishes or fails, trigger next queued item
-        if (isFinished) {
+        if (task.status == DownloadStatus.completed || task.status == DownloadStatus.failed || task.status == DownloadStatus.cancelled) {
           _processQueue();
         }
       },

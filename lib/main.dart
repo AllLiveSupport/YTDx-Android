@@ -27,31 +27,28 @@ YTDxAudioHandler? _globalAudioHandler;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  Future<YTDxAudioHandler?> initAudioHandler() async {
-    if (Platform.isAndroid || Platform.isIOS) {
-      return await AudioService.init(
-        builder: () => YTDxAudioHandler(),
-        config: const AudioServiceConfig(
-          androidNotificationChannelId: 'com.alllivesupport.ytdxstudio.channel.audio',
-          androidNotificationChannelName: 'YTDx Müzik Oynatıcı',
-          androidNotificationChannelDescription: 'YTDx Studio Müzik Oynatıcı ve Kilit Ekranı',
-          androidNotificationOngoing: true,
-          androidStopForegroundOnPause: true,
-          androidNotificationIcon: 'drawable/ic_stat_music',
-          androidShowNotificationBadge: false,
-          notificationColor: Color(0xFF1976D2),
-          androidNotificationClickStartsActivity: true,
-        ),
-      );
-    }
-    return null;
+  if (Platform.isAndroid || Platform.isIOS) {
+    // Initialize audio_service — this creates the real foreground service
+    // that works on lock screen, HyperOS, MIUI, etc.
+    _globalAudioHandler = await AudioService.init(
+      builder: () => YTDxAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.alllivesupport.ytdxstudio.channel.audio',
+        androidNotificationChannelName: 'YTDx Müzik Oynatıcı',
+        androidNotificationChannelDescription: 'YTDx Studio Müzik Oynatıcı ve Kilit Ekranı',
+        // ongoing: true makes Stop action appear as X dismiss button in notification
+        androidNotificationOngoing: true,
+        // When paused, allow swiping away the notification (stops service)
+        androidStopForegroundOnPause: true,
+        androidNotificationIcon: 'drawable/ic_stat_music',
+        androidShowNotificationBadge: false,
+        notificationColor: Color(0xFF1976D2),
+        androidNotificationClickStartsActivity: true,
+      ),
+    );
   }
 
-  final results = await Future.wait([
-    initAudioHandler(),
-    PlaylistManager.instance.init(),
-  ]);
-  _globalAudioHandler = results[0] as YTDxAudioHandler?;
+  await PlaylistManager.instance.init();
 
   runApp(
     MultiProvider(
