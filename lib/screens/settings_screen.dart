@@ -463,7 +463,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         await _checkLinkedAccount();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Kayıtlı OAuth ve PoToken önbelleği temizlendi.')),
+                            SnackBar(content: Text(I18n.tr('settings_token_cleared'))),
                           );
                         }
                         appState.saveSettings();
@@ -928,12 +928,12 @@ class _GoogleDeviceDialogState extends State<_GoogleDeviceDialog> {
       content: _isLoading
           ? Container(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: const Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: AppColors.primaryBlue),
-                  SizedBox(height: 16),
-                  Text('Google sunucularından resmi cihaz kodu alınıyor...'),
+                  const CircularProgressIndicator(color: AppColors.primaryBlue),
+                  const SizedBox(height: 16),
+                  Text(I18n.tr('settings_oauth_connecting')),
                 ],
               ),
             )
@@ -947,24 +947,24 @@ class _GoogleDeviceDialogState extends State<_GoogleDeviceDialog> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _fetchRealGoogleCode,
-                      child: const Text('Tekrar Dene'),
+                      child: Text(I18n.tr('settings_btn_retry')),
                     ),
                   ],
                 )
               : _isAuthorized
                   ? Container(
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: const Column(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 48),
-                          SizedBox(height: 14),
-                          Text(
+                          const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 48),
+                          const SizedBox(height: 14),
+                          const Text(
                             'Google Hesabınız Başarıyla Doğrulandı!',
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.greenAccent),
                           ),
-                          SizedBox(height: 6),
-                          Text('Artık bot ve IP engelleri olmadan hızlı indirme yapabilirsiniz.'),
+                          const SizedBox(height: 6),
+                          Text(I18n.tr('settings_oauth_success')),
                         ],
                       ),
                     )
@@ -1008,7 +1008,7 @@ class _GoogleDeviceDialogState extends State<_GoogleDeviceDialog> {
                                   if (_userCode != null) {
                                     Clipboard.setData(ClipboardData(text: _userCode!));
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Kod panoya kopyalandı!')),
+                                      SnackBar(content: Text(I18n.tr('settings_oauth_copied'))),
                                     );
                                   }
                                 },
@@ -1047,12 +1047,12 @@ class _GoogleDeviceDialogState extends State<_GoogleDeviceDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(_isAuthorized ? 'Kapat' : I18n.tr('modal_btn_cancel')),
+          child: Text(_isAuthorized ? I18n.tr('settings_btn_ok') : I18n.tr('modal_btn_cancel')),
         ),
         if (!_isLoading && _errorMessage == null && !_isAuthorized)
           ElevatedButton.icon(
             icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: const Text('google.com/device Aç', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text(I18n.tr('settings_oauth_open_device'), style: const TextStyle(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryBlue,
               foregroundColor: Colors.white,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/playlist_manager.dart';
 import '../services/haptic_service.dart';
+import '../services/i18n.dart';
 import '../theme/app_colors.dart';
 
 class AddToPlaylistDialog {
@@ -39,7 +40,7 @@ class AddToPlaylistDialog {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Çalma Listesine Ekle',
+                      I18n.tr('playlist_add_to'),
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
@@ -91,7 +92,7 @@ class AddToPlaylistDialog {
                               ),
                             ),
                             title: Text(
-                              pl.title,
+                              pl.getLocalizedTitle(),
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.bold,
@@ -99,7 +100,7 @@ class AddToPlaylistDialog {
                               ),
                             ),
                             subtitle: Text(
-                              '${pl.trackPaths.length} şarkı',
+                              I18n.tr('playlist_count_tracks', args: [pl.trackPaths.length.toString()]),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,

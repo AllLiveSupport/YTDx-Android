@@ -667,11 +667,11 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 80),
               alignment: Alignment.center,
-              child: const Column(
+              child: Column(
                 children: [
-                  CircularProgressIndicator(color: AppColors.primaryBlue, strokeWidth: 3),
-                  SizedBox(height: 16),
-                  Text('Trend videolar yükleniyor...'),
+                  const CircularProgressIndicator(color: AppColors.primaryBlue, strokeWidth: 3),
+                  const SizedBox(height: 16),
+                  Text(I18n.tr('home_loading_trends')),
                 ],
               ),
             )
@@ -684,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(Icons.feed_outlined, size: 48, color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
                   const SizedBox(height: 12),
-                  const Text('Bu kategori için video bulunamadı. Farklı bir kategori veya bölge seçin.'),
+                  Text(I18n.tr('home_no_trends_found')),
                 ],
               ),
             )

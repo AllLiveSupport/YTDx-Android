@@ -711,33 +711,33 @@ class _LocalMusicScreenState extends State<LocalMusicScreen>
                       }
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'add_to_playlist',
                         child: Row(
                           children: [
-                            Icon(Icons.playlist_add_rounded, size: 16, color: AppColors.primaryBlue),
-                            SizedBox(width: 8),
-                            Text('Çalma Listesine Ekle', style: TextStyle(fontSize: 12)),
+                            const Icon(Icons.playlist_add_rounded, size: 16, color: AppColors.primaryBlue),
+                            const SizedBox(width: 8),
+                            Text(I18n.tr('playlist_add_to'), style: const TextStyle(fontSize: 12)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'now_playing',
                         child: Row(
                           children: [
-                            Icon(Icons.open_in_full_rounded, size: 16, color: AppColors.purpleAccent),
-                            SizedBox(width: 8),
-                            Text('Çaları Aç', style: TextStyle(fontSize: 12)),
+                            const Icon(Icons.open_in_full_rounded, size: 16, color: AppColors.purpleAccent),
+                            const SizedBox(width: 8),
+                            Text(I18n.tr('playlist_open_player'), style: const TextStyle(fontSize: 12)),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'open_folder',
                         child: Row(
                           children: [
-                            Icon(Icons.folder_open_rounded, size: 16),
-                            SizedBox(width: 8),
-                            Text('Dosya Konumu', style: TextStyle(fontSize: 12)),
+                            const Icon(Icons.folder_open_rounded, size: 16),
+                            const SizedBox(width: 8),
+                            Text(I18n.tr('playlist_file_location'), style: const TextStyle(fontSize: 12)),
                           ],
                         ),
                       ),

@@ -187,7 +187,7 @@ class _DownloadsScreenState extends State<DownloadsScreen>
                     children: [
                       OutlinedButton.icon(
                         icon: const Icon(Icons.bug_report_outlined, size: 16),
-                        label: const Text('Debug Logları', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        label: Text(I18n.tr('downloads_debug_logs'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.cyanAccent,
                           side: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.4)),

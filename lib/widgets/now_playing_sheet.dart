@@ -592,16 +592,16 @@ Widget _buildLyricsView(
       _lastScrolledIndex = activeIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_lyricsScrollController.hasClients && !_userIsScrolling) {
-          // 76px per row: 56px min-height + 20px vertical margin
-          final targetOffset = (activeIndex * 76.0) - 160.0;
+          // Precise viewport centering with smooth 320ms easeOutCubic
+          final targetOffset = (activeIndex * 68.0) - 140.0;
           final clamped = targetOffset.clamp(
             0.0,
             _lyricsScrollController.position.maxScrollExtent,
           );
           _lyricsScrollController.animateTo(
             clamped,
-            duration: const Duration(milliseconds: 750),
-            curve: Curves.easeInOutCubic,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
           );
         }
       });
@@ -609,13 +609,15 @@ Widget _buildLyricsView(
 
     return Stack(
       children: [
-        // 1. Ambient Blurred Album Cover Art Background
+        // 1. Ambient Blurred Album Cover Art Background (Isolated in RepaintBoundary for 60/120 FPS)
         Positioned.fill(
-          child: Opacity(
-            opacity: isDark ? 0.22 : 0.12,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
-              child: _buildCoverArt(task, isDark),
+          child: RepaintBoundary(
+            child: Opacity(
+              opacity: isDark ? 0.22 : 0.12,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 55, sigmaY: 55),
+                child: _buildCoverArt(task, isDark),
+              ),
             ),
           ),
         ),
@@ -657,7 +659,7 @@ Widget _buildLyricsView(
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Şarkı Sözleri Yükleniyor...',
+                  I18n.tr('lyrics_loading'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -666,7 +668,7 @@ Widget _buildLyricsView(
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'YouTube altyazıları taranıyor',
+                  I18n.tr('lyrics_scanning_subs'),
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
@@ -693,7 +695,7 @@ Widget _buildLyricsView(
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Şarkı Sözü Bulunamadı',
+                    I18n.tr('lyrics_not_found'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -702,7 +704,7 @@ Widget _buildLyricsView(
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Bu parçanın YouTube videosunda altyazı veya açıklama sözleri yer almıyor.',
+                    I18n.tr('lyrics_no_lyrics_desc'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -713,7 +715,7 @@ Widget _buildLyricsView(
                   const SizedBox(height: 22),
                   TextButton.icon(
                     icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Tekrar Dene'),
+                    label: Text(I18n.tr('lyrics_retry')),
                     onPressed: () => player.refreshLyrics(),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primaryBlue,
@@ -760,7 +762,7 @@ Widget _buildLyricsView(
                 ),
               ),
 
-              // Flowing Synced Lyrics List
+              // Flowing Synced Lyrics List (Isolated Repaint Layer)
               Expanded(
                 child: NotificationListener<ScrollNotification>(
                   onNotification: (notification) {
@@ -776,77 +778,72 @@ Widget _buildLyricsView(
                     }
                     return false;
                   },
-                  child: ListView.builder(
-                    controller: _lyricsScrollController,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 16, bottom: 125, left: 24, right: 24),
-                    itemCount: lyrics.lines.length,
-                    itemBuilder: (context, index) {
-                      final line = lyrics.lines[index];
-                      final isActive = (index == activeIndex);
-                      final isPast = (activeIndex >= 0 && index < activeIndex);
+                  child: RepaintBoundary(
+                    child: ListView.builder(
+                      controller: _lyricsScrollController,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.only(top: 16, bottom: 125, left: 24, right: 24),
+                      itemCount: lyrics.lines.length,
+                      itemBuilder: (context, index) {
+                        final line = lyrics.lines[index];
+                        final isActive = (index == activeIndex);
+                        final isPast = (activeIndex >= 0 && index < activeIndex);
 
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          HapticService.light();
-                          player.seek(line.time);
-                        },
-                        child: TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: isActive ? 0.0 : 1.0, end: isActive ? 1.0 : 0.0),
-                          duration: const Duration(milliseconds: 450),
-                          curve: Curves.easeInOutCubic,
-                          builder: (context, activeT, _) {
-                            // fontSize: inactive=18, active=23 — smooth interpolation
-                            final fontSize = 18.0 + (activeT * 5.0);
-                            // opacity: past=0.28, upcoming=0.50, active=1.0
-                            final opacity = isPast
-                                ? (0.28 + activeT * 0.72)
-                                : (0.50 + activeT * 0.50);
-                            // Vertical scale: subtly expands active line
-                            final scaleY = 1.0 + (activeT * 0.04);
+                        final double targetOpacity = isActive
+                            ? 1.0
+                            : (isPast ? 0.32 : 0.55);
 
-                            return Transform.scale(
-                              scaleY: scaleY,
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                constraints: const BoxConstraints(minHeight: 56),
-                                margin: const EdgeInsets.symmetric(vertical: 10),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  color: AppColors.primaryBlue.withValues(alpha: 0.16 * activeT),
-                                ),
-                                child: Text(
-                                  line.text,
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontSize: fontSize,
-                                    fontWeight: activeT > 0.5 ? FontWeight.w800 : FontWeight.w600,
-                                    height: 1.35,
-                                    letterSpacing: -0.3 * activeT,
-                                    color: (isDark ? Colors.white : const Color(0xFF0F172A))
-                                        .withValues(alpha: opacity),
-                                    shadows: isDark && activeT > 0.3
-                                        ? [
-                                            Shadow(
-                                              color: AppColors.primaryBlue.withValues(alpha: 0.85 * activeT),
-                                              blurRadius: 20,
-                                            ),
-                                            Shadow(
-                                              color: Colors.white.withValues(alpha: 0.6 * activeT),
-                                              blurRadius: 4,
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                ),
-                              ),
-                            );
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            HapticService.light();
+                            player.seek(line.time);
                           },
-                        ),
-                      );
-                    },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeOutCubic,
+                            constraints: const BoxConstraints(minHeight: 52),
+                            margin: EdgeInsets.symmetric(vertical: isActive ? 8 : 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: isActive
+                                  ? AppColors.primaryBlue.withValues(alpha: 0.16)
+                                  : Colors.transparent,
+                            ),
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeOutCubic,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: isActive ? 22 : 17.5,
+                                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                                height: 1.35,
+                                letterSpacing: isActive ? -0.3 : 0.0,
+                                color: (isDark ? Colors.white : const Color(0xFF0F172A))
+                                    .withValues(alpha: targetOpacity),
+                                shadows: isDark && isActive
+                                    ? [
+                                        Shadow(
+                                          color: AppColors.primaryBlue.withValues(alpha: 0.85),
+                                          blurRadius: 18,
+                                        ),
+                                        Shadow(
+                                          color: Colors.white.withValues(alpha: 0.5),
+                                          blurRadius: 4,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Text(
+                                line.text,
+                                textAlign: TextAlign.left,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),

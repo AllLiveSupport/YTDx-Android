@@ -87,14 +87,14 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Oynatma listesi bulunamadı veya boş.')),
+            SnackBar(content: Text(I18n.tr('playlist_not_found_or_empty'))),
           );
         }
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Playlist yüklenirken bir hata oluştu.')),
+          SnackBar(content: Text(I18n.tr('playlist_error_loading'))),
         );
       }
     } finally {
@@ -107,7 +107,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
   void _startBatchDownload(AppState appState) {
     if (_selectedVideoIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen en az bir video seçin!')),
+        SnackBar(content: Text(I18n.tr('playlist_select_at_least_one'))),
       );
       return;
     }
@@ -133,7 +133,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${result.queued} yeni dosya kuyruğa eklendi. ${result.skipped} adet daha önce indirilmiş dosya atlandı.',
+            I18n.tr('playlist_queued_with_skip', args: [result.queued.toString(), result.skipped.toString()]),
           ),
           duration: const Duration(seconds: 4),
         ),
@@ -141,7 +141,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${result.queued} parça indirme kuyruğuna eklendi!'),
+          content: Text(I18n.tr('playlist_queued_count', args: [result.queued.toString()])),
         ),
       );
     }
@@ -221,14 +221,14 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
               labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
               unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
               onTap: (_) => HapticService.light(),
-              tabs: const [
+              tabs: [
                 Tab(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.queue_music_rounded, size: 16),
-                      SizedBox(width: 6),
-                      Text('Özel Listelerim'),
+                      const Icon(Icons.queue_music_rounded, size: 16),
+                      const SizedBox(width: 6),
+                      Text(I18n.tr('playlist_tab_custom')),
                     ],
                   ),
                 ),
@@ -236,9 +236,9 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.cloud_download_rounded, size: 16),
-                      SizedBox(width: 6),
-                      Text('YouTube Playlist İndir'),
+                      const Icon(Icons.cloud_download_rounded, size: 16),
+                      const SizedBox(width: 6),
+                      Text(I18n.tr('playlist_tab_youtube')),
                     ],
                   ),
                 ),
@@ -563,16 +563,16 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
                     runSpacing: 8,
                     alignment: WrapAlignment.center,
                     children: [
-                      _buildFeatureBadge('⚡ Yüksek Hız', isDark),
-                      _buildFeatureBadge('🎵 MP3 / M4A / MP4', isDark),
-                      _buildFeatureBadge('🎨 Otomatik Kapak Resmi', isDark),
+                      _buildFeatureBadge(I18n.tr('playlist_badge_high_speed'), isDark),
+                      _buildFeatureBadge(I18n.tr('playlist_badge_formats'), isDark),
+                      _buildFeatureBadge(I18n.tr('playlist_badge_cover_art'), isDark),
                     ],
                   ),
                   const SizedBox(height: 20),
                   // Direct action button
                   ElevatedButton.icon(
                     icon: const Icon(Icons.content_paste_rounded, size: 16),
-                    label: const Text('Panodan Yapıştır ve Başlat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    label: Text(I18n.tr('playlist_paste_start'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
                       foregroundColor: Colors.white,
@@ -590,7 +590,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
                       } else {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Panoda geçerli bir YouTube bağlantısı bulunamadı.')),
+                          SnackBar(content: Text(I18n.tr('playlist_clipboard_empty'))),
                         );
                       }
                     },
@@ -877,29 +877,29 @@ class _PlaylistsScreenState extends State<PlaylistsScreen>
     // Build quality items according to selected format
     List<DropdownMenuItem<String>> qualityItems;
     if (_selectedFormat == 'mp4') {
-      qualityItems = const [
-        DropdownMenuItem(value: 'auto', child: Text('En Yüksek Kalite (Auto)')),
-        DropdownMenuItem(value: '1080p', child: Text('1080p Full HD')),
-        DropdownMenuItem(value: '720p', child: Text('720p HD')),
-        DropdownMenuItem(value: '480p', child: Text('480p SD')),
-        DropdownMenuItem(value: '360p', child: Text('360p')),
+      qualityItems = [
+        DropdownMenuItem(value: 'auto', child: Text(I18n.tr('modal_auto_best'))),
+        DropdownMenuItem(value: '1080p', child: Text(I18n.tr('quality_1080p_title'))),
+        DropdownMenuItem(value: '720p', child: Text(I18n.tr('quality_720p_title'))),
+        DropdownMenuItem(value: '480p', child: Text(I18n.tr('quality_480p_title'))),
+        DropdownMenuItem(value: '360p', child: Text(I18n.tr('quality_360p_title'))),
       ];
     } else if (_selectedFormat == 'mp3') {
-      qualityItems = const [
-        DropdownMenuItem(value: '320k', child: Text('320 kbps (Ultra HQ - LAME MP3)')),
-        DropdownMenuItem(value: '192k', child: Text('192 kbps (Standart Kalite)')),
-        DropdownMenuItem(value: '128k', child: Text('128 kbps (Hızlı İndirme)')),
+      qualityItems = [
+        DropdownMenuItem(value: '320k', child: Text(I18n.tr('modal_mp3_320_title'))),
+        DropdownMenuItem(value: '192k', child: Text(I18n.tr('modal_mp3_192_title'))),
+        DropdownMenuItem(value: '128k', child: Text(I18n.tr('modal_mp3_128_title'))),
       ];
     } else if (_selectedFormat == 'opus') {
-      qualityItems = const [
-        DropdownMenuItem(value: '160k', child: Text('160 kbps (YouTube Maks. Netlik)')),
-        DropdownMenuItem(value: '70k', child: Text('70 kbps (Veri Tasarrufu)')),
+      qualityItems = [
+        DropdownMenuItem(value: '160k', child: Text(I18n.tr('modal_opus_160_title'))),
+        DropdownMenuItem(value: '70k', child: Text(I18n.tr('modal_opus_70_title'))),
       ];
     } else {
       // m4a
-      qualityItems = const [
-        DropdownMenuItem(value: '256k', child: Text('256 kbps (Tavsiye Edilen - Orijinal AAC)')),
-        DropdownMenuItem(value: '128k', child: Text('128 kbps (Hızlı AAC)')),
+      qualityItems = [
+        DropdownMenuItem(value: '256k', child: Text(I18n.tr('modal_m4a_256_title'))),
+        DropdownMenuItem(value: '128k', child: Text(I18n.tr('modal_m4a_128_title'))),
       ];
     }
 

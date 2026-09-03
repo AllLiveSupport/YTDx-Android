@@ -7,6 +7,7 @@ import '../models/download_task.dart';
 import '../providers/app_state.dart';
 import '../services/song_recognition_service.dart';
 import '../services/youtube_service.dart';
+import '../services/i18n.dart';
 import '../theme/app_colors.dart';
 import 'quality_modal.dart';
 
@@ -169,7 +170,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
         );
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('YouTube üzerinde parça bulunamadı.')),
+          SnackBar(content: Text(I18n.tr('recognition_not_found'))),
         );
       }
     } catch (e) {
@@ -178,7 +179,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Arama hatası: $e')),
+          SnackBar(content: Text(I18n.tr('recognition_search_error', args: [e.toString()]))),
         );
       }
     }
@@ -202,7 +203,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
           children: [
             const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text('Panoya kopyalandı: $text')),
+            Expanded(child: Text(I18n.tr('recognition_copied', args: [text]))),
           ],
         ),
         backgroundColor: const Color(0xFF1E2230),
@@ -386,7 +387,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
         const SizedBox(height: 14),
 
         Text(
-          _isProcessing ? 'Akustik Parmak İzi Çözümleniyor...' : 'Ortamdaki Müzik Dinleniyor...',
+          _isProcessing ? I18n.tr('recognition_processing') : I18n.tr('recognition_listening'),
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -397,8 +398,8 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
         const SizedBox(height: 6),
         Text(
           _isProcessing
-              ? 'Shazam veritabanı ile frekans zirveleri eşleştiriliyor...'
-              : 'Müziği cihazın mikrofonuna yakın tutun ($_countdownSeconds sn)',
+              ? I18n.tr('recognition_db_match')
+              : I18n.tr('recognition_hold_near', args: [_countdownSeconds.toString()]),
           style: TextStyle(
             fontSize: 13,
             color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -478,9 +479,9 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
           height: 48,
           child: ElevatedButton.icon(
             icon: const Icon(Icons.download_rounded, size: 20, color: Colors.white),
-            label: const Text(
-              'Kalite Seç & Hemen İndir (MP3 / MP4)',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+            label: Text(
+              I18n.tr('modal_title_video'),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.greenMusic,
@@ -499,7 +500,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
             Expanded(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.search_rounded, size: 18),
-                label: const Text('Sonuçları Gör', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                label: Text(I18n.tr('recognition_view_results'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: isDark ? Colors.white : AppColors.lightTextPrimary,
                   side: BorderSide(color: isDark ? const Color(0xFF2E3242) : const Color(0xFFCBD5E1)),
@@ -515,7 +516,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
             Expanded(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.copy_rounded, size: 17),
-                label: const Text('Kopyala', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                label: Text(I18n.tr('recognition_copy'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: isDark ? Colors.white : AppColors.lightTextPrimary,
                   side: BorderSide(color: isDark ? const Color(0xFF2E3242) : const Color(0xFFCBD5E1)),
@@ -532,7 +533,7 @@ class _MusicRecognitionSheetState extends State<MusicRecognitionSheet>
         // Listen Again
         TextButton.icon(
           icon: const Icon(Icons.refresh_rounded, size: 16),
-          label: const Text('Farklı Bir Şarkı Tanı', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+          label: Text(I18n.tr('recognition_try_another'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
           style: TextButton.styleFrom(foregroundColor: AppColors.primaryBlue),
           onPressed: _startRecognition,
         ),

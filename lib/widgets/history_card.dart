@@ -254,23 +254,23 @@ class HistoryCard extends StatelessWidget {
                     }
                   },
                   itemBuilder: (ctx) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'open_file',
                       child: Row(
                         children: [
-                          Icon(Icons.launch_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text('Dış Uygulamada Aç', style: TextStyle(fontSize: 13)),
+                          const Icon(Icons.launch_rounded, size: 18),
+                          const SizedBox(width: 10),
+                          Text(I18n.tr('history_open_external'), style: const TextStyle(fontSize: 13)),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'open_folder',
                       child: Row(
                         children: [
-                          Icon(Icons.folder_open_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text('Klasörde Göster', style: TextStyle(fontSize: 13)),
+                          const Icon(Icons.folder_open_rounded, size: 18),
+                          const SizedBox(width: 10),
+                          Text(I18n.tr('history_show_in_folder'), style: const TextStyle(fontSize: 13)),
                         ],
                       ),
                     ),
@@ -279,9 +279,9 @@ class HistoryCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                          const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
                           const SizedBox(width: 10),
-                          Text('Listeden Kaldır', style: TextStyle(fontSize: 13, color: Colors.redAccent)),
+                          Text(I18n.tr('history_remove_from_list'), style: const TextStyle(fontSize: 13, color: Colors.redAccent)),
                         ],
                       ),
                     ),

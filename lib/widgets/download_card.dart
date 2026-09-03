@@ -305,7 +305,7 @@ class DownloadCard extends StatelessWidget {
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           icon: const Icon(Icons.vpn_key_rounded, size: 14),
-                          label: const Text('Ayarlar\'dan Google ile Giriş Yap', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: Text(I18n.tr('download_google_auth_btn'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryBlue,
                             foregroundColor: Colors.white,

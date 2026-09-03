@@ -1,3 +1,5 @@
+import '../services/i18n.dart';
+
 class CustomPlaylist {
   final String id;
   String title;
@@ -19,6 +21,16 @@ class CustomPlaylist {
         createdAt = createdAt ?? DateTime.now();
 
   bool get isFavorites => id == 'favorites';
+
+  String getLocalizedTitle() {
+    if (isFavorites) return I18n.tr('playlist_favorites_title');
+    return title;
+  }
+
+  String? getLocalizedDescription() {
+    if (isFavorites) return I18n.tr('playlist_favorites_desc');
+    return description;
+  }
 
   factory CustomPlaylist.fromJson(Map<String, dynamic> json) {
     return CustomPlaylist(

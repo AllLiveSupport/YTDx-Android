@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/i18n.dart';
 import '../theme/app_colors.dart';
 
 class SleepTimerSheet extends StatefulWidget {
@@ -152,7 +153,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
         const SizedBox(height: 20),
 
         Text(
-          isEndOfTrackActive ? 'Bu Parça Bitince' : _formatRemaining(remaining ?? Duration.zero),
+          isEndOfTrackActive ? I18n.tr('sleep_timer_end_of_track') : _formatRemaining(remaining ?? Duration.zero),
           style: TextStyle(
             fontSize: isEndOfTrackActive ? 26 : 40,
             fontWeight: FontWeight.w800,
@@ -164,8 +165,8 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
         const SizedBox(height: 6),
         Text(
           isEndOfTrackActive
-              ? 'Şarkı tamamlandığında oynatma otomatik durdurulacak'
-              : 'kaldı • Müzik otomatik olarak duracak',
+              ? I18n.tr('sleep_timer_end_of_track_desc')
+              : I18n.tr('sleep_timer_remaining_desc'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
@@ -189,7 +190,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
                 const Icon(Icons.volume_down_rounded, size: 14, color: AppColors.primaryBlue),
                 const SizedBox(width: 6),
                 Text(
-                  '15 sn Yumuşak Kapanış Aktif',
+                  I18n.tr('sleep_timer_fadeout'),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -229,9 +230,9 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
               Navigator.pop(context);
             },
             icon: const Icon(Icons.close_rounded, size: 20),
-            label: const Text(
-              'Zamanlayıcıyı Kapat',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            label: Text(
+              I18n.tr('sleep_timer_cancel'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
               foregroundColor: Colors.redAccent,
@@ -299,7 +300,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Akıllı Uyku Zamanlayıcısı',
+                    I18n.tr('sleep_timer_title'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -308,7 +309,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Belirlenen süre sonunda oynatıcı durur',
+                    I18n.tr('sleep_timer_subtitle'),
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
@@ -323,7 +324,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
 
         // Duration Presets Chips
         Text(
-          'Süre Seçin',
+          I18n.tr('sleep_timer_choose_duration'),
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -339,7 +340,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
             ...presets.map((min) {
               final isSelected = !_isEndOfTrack && _selectedMinutes == min;
               return ChoiceChip(
-                label: Text('$min Dakika'),
+                label: Text(I18n.tr('sleep_timer_minutes', args: [min.toString()])),
                 selected: isSelected,
                 selectedColor: AppColors.primaryBlue,
                 backgroundColor: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
@@ -377,7 +378,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
                     ? Colors.white
                     : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
               ),
-              label: const Text('Bu Şarkı Bitince'),
+              label: Text(I18n.tr('sleep_timer_end_of_track')),
               selected: _isEndOfTrack,
               selectedColor: AppColors.primaryBlue,
               backgroundColor: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
@@ -414,14 +415,14 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Özel Süre Ayarı',
+                I18n.tr('sleep_timer_custom'),
                 style: TextStyle(
                   fontSize: 12,
                   color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                 ),
               ),
               Text(
-                '$_selectedMinutes dk',
+                I18n.tr('sleep_timer_custom_min', args: [_selectedMinutes.toString()]),
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -479,7 +480,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Yumuşak Kapanış (Fade-out)',
+                      I18n.tr('sleep_timer_fadeout'),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -488,7 +489,7 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      'Son 15 sn ses fısıltı gibi azalarak durur',
+                      I18n.tr('sleep_timer_subtitle'),
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
@@ -531,8 +532,8 @@ class _SleepTimerSheetState extends State<SleepTimerSheet> with SingleTickerProv
             icon: const Icon(Icons.check_circle_rounded, size: 20),
             label: Text(
               _isEndOfTrack
-                  ? 'Şarkı Bitince Durdur'
-                  : '$_selectedMinutes Dakika Sonra Durdur',
+                  ? I18n.tr('sleep_timer_end_of_track')
+                  : I18n.tr('sleep_timer_minutes', args: [_selectedMinutes.toString()]),
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(

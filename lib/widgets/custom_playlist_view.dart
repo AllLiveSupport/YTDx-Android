@@ -8,6 +8,7 @@ import '../services/playlist_manager.dart';
 import '../services/local_audio_scanner.dart';
 import '../services/haptic_service.dart';
 import '../theme/app_colors.dart';
+import '../services/i18n.dart';
 import '../main.dart' show isMobileDevice;
 
 class CustomPlaylistView extends StatefulWidget {
@@ -102,7 +103,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                   child: Icon(_getIconData(selectedIcon), color: Color(selectedColor), size: 22),
                 ),
                 const SizedBox(width: 12),
-                const Text('Yeni Çalma Listesi', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                Text(I18n.tr('playlist_new_title'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
               ],
             ),
             content: SingleChildScrollView(
@@ -115,7 +116,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                     autofocus: true,
                     style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14),
                     decoration: InputDecoration(
-                      labelText: 'Liste Adı (Örn: Spor, Araba)',
+                      labelText: I18n.tr('playlist_name_label'),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -124,12 +125,12 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                     controller: descController,
                     style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
                     decoration: InputDecoration(
-                      labelText: 'Açıklama (İsteğe bağlı)',
+                      labelText: I18n.tr('playlist_desc_label'),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Renk Seçin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text(I18n.tr('playlist_choose_color'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -157,7 +158,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
-                  const Text('İkon Seçin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text(I18n.tr('playlist_choose_icon'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -187,7 +188,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('İptal'),
+                child: Text(I18n.tr('playlist_btn_cancel')),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -207,7 +208,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                     if (ctx.mounted) Navigator.of(ctx).pop();
                   }
                 },
-                child: const Text('Oluştur'),
+                child: Text(I18n.tr('playlist_btn_create')),
               ),
             ],
           );
@@ -259,7 +260,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Özel Çalma Listeleri',
+                    I18n.tr('playlist_tab_custom'),
                     style: TextStyle(
                       fontSize: isMobile ? 18 : 22,
                       fontWeight: FontWeight.bold,
@@ -268,7 +269,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${playlists.length} çalma listesi',
+                    I18n.tr('playlist_count_playlists', args: [playlists.length.toString()]),
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -278,7 +279,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
               ),
               FilledButton.icon(
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Yeni Liste', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                label: Text(I18n.tr('playlist_btn_new'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
                   foregroundColor: Colors.white,
@@ -374,13 +375,13 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                                 }
                               },
                               itemBuilder: (_) => [
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                   value: 'delete',
                                   child: Row(
                                     children: [
-                                      Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
-                                      SizedBox(width: 8),
-                                      Text('Listeyi Sil', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                                      const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                                      const SizedBox(width: 8),
+                                      Text(I18n.tr('playlist_delete'), style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
                                     ],
                                   ),
                                 ),
@@ -394,7 +395,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            pl.title,
+                            pl.getLocalizedTitle(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -405,7 +406,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${pl.trackPaths.length} şarkı',
+                            I18n.tr('playlist_count_tracks', args: [pl.trackPaths.length.toString()]),
                             style: TextStyle(
                               fontSize: 11.5,
                               color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -463,7 +464,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      pl.title,
+                      pl.getLocalizedTitle(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -472,9 +473,9 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                         color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                       ),
                     ),
-                    if (pl.description != null && pl.description!.isNotEmpty)
+                    if (pl.getLocalizedDescription() != null && pl.getLocalizedDescription()!.isNotEmpty)
                       Text(
-                        pl.description!,
+                        pl.getLocalizedDescription()!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 11.5, color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
@@ -519,7 +520,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        pl.title,
+                        pl.getLocalizedTitle(),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -528,7 +529,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${_resolvedTracks.length} şarkı mevcut',
+                        I18n.tr('playlist_count_tracks_avail', args: [_resolvedTracks.length.toString()]),
                         style: TextStyle(fontSize: 12, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                       ),
                     ],
@@ -548,7 +549,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.play_arrow_rounded, size: 20),
                     label: Text(
-                      'Tümünü Çal (${_resolvedTracks.length})',
+                      I18n.tr('playlist_play_all_count', args: [_resolvedTracks.length.toString()]),
                       style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -565,9 +566,9 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.shuffle_rounded, size: 18),
-                    label: const Text(
-                      'Karışık Çal',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                    label: Text(
+                      I18n.tr('playlist_shuffle'),
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: plColor,
@@ -600,12 +601,12 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                     Icon(Icons.queue_music_rounded, size: 48, color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
                     const SizedBox(height: 12),
                     Text(
-                      'Bu listede henüz şarkı yok.',
+                      I18n.tr('playlist_empty_title'),
                       style: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary, fontSize: 13),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Yerel müzikler veya indirmelerden şarkı ekleyebilirsiniz.',
+                      I18n.tr('playlist_empty_subtitle'),
                       style: TextStyle(color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted, fontSize: 11.5),
                     ),
                   ],
@@ -698,7 +699,7 @@ class _CustomPlaylistViewState extends State<CustomPlaylistView> {
                       // Remove from Playlist
                       IconButton(
                         icon: Icon(Icons.remove_circle_outline_rounded, size: 20, color: Colors.redAccent.withValues(alpha: 0.7)),
-                        tooltip: 'Listeden Çıkar',
+                        tooltip: I18n.tr('playlist_remove_track'),
                         onPressed: () async {
                           HapticService.light();
                           await playlistManager.removeTrackFromPlaylist(pl.id, track.filePath);
