@@ -251,8 +251,7 @@ if (name.startsWith(baseTitle)) {
       }
     } catch (_) {}
   }
-
-  /// Direct Native Stream Downloader with chunk-based in  /// Direct Native Stream Downloader with chunk-based inactivity watchdog.
+  /// Direct Native Stream Downloader with chunk-based inactivity watchdog.
   /// Each received chunk resets the watchdog timer — this correctly handles
   /// YouTube DASH streams that stall between segments without closing the TCP socket.
   static Future<StreamInfo?> _downloadDirectStream({
@@ -264,8 +263,25 @@ if (name.startsWith(baseTitle)) {
     double progressStart = 0.0,
     double progressWeight = 1.0,
   }) async {
-    for (final streamInfo in streamCandidates) {
+    int consecutiveAdaptiveFailures = 0;
+    final hasMuxedFallback = streamCandidates.any((s) => s is MuxedStreamInfo || s.tag == 18 || s.tag == 22);
+
+    for (int i = 0; i < streamCandidates.length; i++) {
+      final streamInfo = streamCandidates[i];
       if (task.status == DownloadStatus.cancelled) break;
+
+      // ⚡ Akıllı Hızlı Atlama: Eğer ardışık 2 tekil adaptif akış 403 veya timeout verdiyse,
+      // YouTube o IP için tekil DASH akışlarını kısıtlamıştır.
+      // Kalan tüm adaptifleri (örneğin 3. ve 4. akışı) bekleyip zaman kaybetmek yerine doğrudan Muxed akışına zıpla!
+      final isAdaptive = streamInfo is! MuxedStreamInfo && streamInfo.tag != 18 && streamInfo.tag != 22;
+      if (isAdaptive && consecutiveAdaptiveFailures >= 2 && hasMuxedFallback) {
+        final muxedIndex = streamCandidates.indexWhere((s) => s is MuxedStreamInfo || s.tag == 18 || s.tag == 22);
+        if (muxedIndex > i) {
+          AppLogger.warn(_tag, '⚡ YouTube tekil akışları kısıtlıyor, kalan adaptifler atlanarak doğrudan güvenli Muxed akışına geçiliyor...');
+          i = muxedIndex - 1;
+          continue;
+        }
+      }
 
       final expectedBytes = streamInfo.size.totalBytes;
       AppLogger.info(_tag, '🚀 Stream deneniyor: itag=${streamInfo.tag}, ${streamInfo.size.totalMegaBytes.toStringAsFixed(1)} MB (${streamInfo.container.name})');
@@ -286,10 +302,11 @@ if (name.startsWith(baseTitle)) {
         if (preRes.statusCode != 206 && preRes.statusCode != 200) {
           AppLogger.warn(_tag,
               '⛔ itag=${streamInfo.tag} YouTube tarafından engellendi (${preRes.statusCode}), sonraki alternatife geçiliyor (~25ms)');
+          if (isAdaptive) consecutiveAdaptiveFailures++;
           continue;
         }
       } catch (_) {
-        // Ön denetim ağ zaman aşımı verirse normal akışla devam et
+        // Ön denetim ağ zaman aşımı verirse
       }
 
       if (targetFile.existsSync()) {
@@ -302,12 +319,13 @@ if (name.startsWith(baseTitle)) {
       int bytesSinceLastTick = 0;
       int lastTickMs = 0;
 
-      // Hızlı ve duyarlı watchdog: İlk bayt için 4 sn, aktif indirme için 8 sn limit
-      const initialConnectLimit = Duration(seconds: 4);
-      const activeInactivityLimit = Duration(seconds: 8);
+      // Dayanıklı watchdog süreleri: İlk bayt için 7 sn (mobil bağlantı için güvenli), aktif indirme için 18 sn limit
+      const initialConnectLimit = Duration(seconds: 7);
+      const activeInactivityLimit = Duration(seconds: 18);
       Timer? watchdog;
       bool timedOut = false;
       final proxyCtrl = StreamController<List<int>>();
+      StreamSubscription<List<int>>? subscription;
 
       try {
         sink = targetFile.openWrite(mode: FileMode.writeOnly);
@@ -320,11 +338,12 @@ if (name.startsWith(baseTitle)) {
             timedOut = true;
             proxyCtrl.addError(TimeoutException(
                 'Akış başlangıç zaman aşımı (${initialConnectLimit.inSeconds}s, itag=${streamInfo.tag})'));
+            subscription?.cancel();
             proxyCtrl.close();
           }
         });
 
-        rawStream.listen(
+        subscription = rawStream.listen(
           (chunk) {
             watchdog?.cancel();
             watchdog = Timer(activeInactivityLimit, () {
@@ -332,12 +351,14 @@ if (name.startsWith(baseTitle)) {
                 timedOut = true;
                 proxyCtrl.addError(TimeoutException(
                     '${activeInactivityLimit.inSeconds}s hareketsizlik (itag=${streamInfo.tag})'));
+                subscription?.cancel();
                 proxyCtrl.close();
               }
             });
             if (!proxyCtrl.isClosed) proxyCtrl.add(chunk);
           },
           onError: (e) {
+            subscription?.cancel();
             if (!proxyCtrl.isClosed) {
               proxyCtrl.addError(e);
               proxyCtrl.close();
@@ -377,8 +398,6 @@ if (name.startsWith(baseTitle)) {
               }
             }
 
-            // Always use actual downloaded bytes for progress — not manifest expectedBytes
-            // because DASH manifests may report compressed size (webm container metadata)
             final displayTotal = expectedBytes > 0 ? expectedBytes : downloaded + 1;
             final subFraction = (downloaded / displayTotal).clamp(0.0, 1.0);
             task.progress = (progressStart + subFraction * progressWeight).clamp(0.0, 1.0);
@@ -387,7 +406,6 @@ if (name.startsWith(baseTitle)) {
                 : '${(downloaded / (1024 * 1024)).toStringAsFixed(1)} MB indirildi';
             onUpdate();
 
-            // Yield to event loop so audio playback platform channels get CPU time
             await Future.delayed(Duration.zero);
           }
         }
@@ -401,7 +419,6 @@ if (name.startsWith(baseTitle)) {
         // Validate: file must exist and have meaningful data
         final diskSize = targetFile.existsSync() ? targetFile.lengthSync() : 0;
         if (diskSize > 0 && task.status != DownloadStatus.cancelled) {
-          // Show actual disk size (not manifest size) to avoid "MB decreasing" confusion
           task.progress = (progressStart + progressWeight).clamp(0.0, 1.0);
           task.sizeInfo = '${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB / ${(diskSize / (1024 * 1024)).toStringAsFixed(1)} MB';
           onUpdate();
@@ -409,11 +426,14 @@ if (name.startsWith(baseTitle)) {
           return streamInfo;
         } else if (timedOut) {
           AppLogger.warn(_tag, '⏰ itag=${streamInfo.tag} zaman aşımına uğradı, sıradakine geçiliyor');
+          if (isAdaptive) consecutiveAdaptiveFailures++;
         } else {
           AppLogger.warn(_tag, '⚠ itag=${streamInfo.tag} indirme doğrulama başarısız ($diskSize bytes), sıradakine geçiliyor');
+          if (isAdaptive) consecutiveAdaptiveFailures++;
         }
       } catch (e) {
         watchdog?.cancel();
+        if (isAdaptive) consecutiveAdaptiveFailures++;
         AppLogger.warn(_tag, '⚠ Stream hatası (itag=${streamInfo.tag}): $e');
         if (sink != null) {
           try { await sink.close(); } catch (_) {}
@@ -424,11 +444,13 @@ if (name.startsWith(baseTitle)) {
         }
       } finally {
         watchdog?.cancel();
+        try { await subscription?.cancel(); } catch (_) {}
         if (!proxyCtrl.isClosed) {
           try { proxyCtrl.close(); } catch (_) {}
         }
         if (sink != null) {
           try { await sink.close(); } catch (_) {}
+          sink = null;
         }
       }
     }
@@ -448,18 +470,33 @@ if (name.startsWith(baseTitle)) {
 
     YoutubeExplode? yt;
     try {
-      yt = await AuthService.createYoutubeClient();
       AppLogger.info(_tag, '🎯 Stream manifest alınıyor...');
 
       StreamManifest manifest;
       try {
-        manifest = await yt.videos.streamsClient.getManifest(
-          videoId,
-          requireWatchPage: false,
-        );
+        yt = await AuthService.createYoutubeClient();
+        try {
+          manifest = await yt.videos.streamsClient.getManifest(
+            videoId,
+            requireWatchPage: false,
+          );
+        } catch (e) {
+          AppLogger.warn(_tag, 'requireWatchPage:false başarısız ($e), watch page ile deneniyor...');
+          manifest = await yt.videos.streamsClient.getManifest(videoId);
+        }
       } catch (e) {
-        AppLogger.warn(_tag, 'Client manifest hatası: $e, varsayılan deneniyor');
-        manifest = await yt.videos.streamsClient.getManifest(videoId);
+        AppLogger.warn(_tag, '⚠ Yetkili istemci ile manifest alınamadı ($e), temiz bağımsız istemciye düşülüyor...');
+        try { yt?.close(); } catch (_) {}
+        yt = YoutubeExplode();
+        try {
+          manifest = await yt.videos.streamsClient.getManifest(
+            videoId,
+            requireWatchPage: false,
+          );
+        } catch (e2) {
+          AppLogger.warn(_tag, 'Temiz istemci requireWatchPage:false başarısız ($e2), watch page ile deneniyor...');
+          manifest = await yt.videos.streamsClient.getManifest(videoId);
+        }
       }
       AppLogger.info(_tag, '🎯 Muxed: ${manifest.muxed.length} | AudioOnly: ${manifest.audioOnly.length} | VideoOnly: ${manifest.videoOnly.length}');
 
@@ -688,35 +725,61 @@ if (name.startsWith(baseTitle)) {
           // AUTO: En yüksek çözünürlük ve bitrate akışları en başta
           videoCandidates.addAll(allVideos);
         } else {
-          List<VideoStreamInfo> findMatches(String label) {
-            final matches = allVideos.where((s) => s.qualityLabel.toLowerCase().contains(label)).toList();
-            matches.sort((a, b) => b.bitrate.compareTo(a.bitrate));
-            return matches;
-          }
-
+          int targetHeight = 1080;
           if (q.contains('4320') || q.contains('8k')) {
-            videoCandidates.addAll(findMatches('4320'));
-            videoCandidates.addAll(findMatches('8k'));
+            targetHeight = 4320;
           } else if (q.contains('2160') || q.contains('4k')) {
-            videoCandidates.addAll(findMatches('2160'));
-            videoCandidates.addAll(findMatches('4k'));
+            targetHeight = 2160;
           } else if (q.contains('1440') || q.contains('2k')) {
-            videoCandidates.addAll(findMatches('1440'));
-            videoCandidates.addAll(findMatches('2k'));
+            targetHeight = 1440;
           } else if (q.contains('1080')) {
-            videoCandidates.addAll(findMatches('1080'));
+            targetHeight = 1080;
           } else if (q.contains('720')) {
-            videoCandidates.addAll(findMatches('720'));
+            targetHeight = 720;
           } else if (q.contains('480')) {
-            videoCandidates.addAll(findMatches('480'));
+            targetHeight = 480;
           } else if (q.contains('360')) {
-            videoCandidates.addAll(findMatches('360'));
+            targetHeight = 360;
+          } else if (q.contains('240')) {
+            targetHeight = 240;
+          } else if (q.contains('144')) {
+            targetHeight = 144;
           }
 
-          // Diğer çözünürlükleri fallback olarak ekle
-          for (final s in allVideos) {
-            if (!videoCandidates.contains(s)) videoCandidates.add(s);
-          }
+          // 🛡️ Akıllı Çözünürlük Sıralaması:
+          // 1. Tam eşleşenler (height == targetHeight veya qualityLabel == targetHeight)
+          // 2. İstenen çözünürlük bulunamazsa, ASLA daha üst/büyük çözünürlüğe zıplama!
+          //    Kullanıcının kotasını/hafızasını korumak için en yakın ALT çözünürlüğü seç (örn. 480 yoksa 360p).
+          // 3. Ancak hiçbir alt çözünürlük yoksa en yakın üst çözünürlüğü fallback yap.
+          final sortedVideos = List<VideoStreamInfo>.from(allVideos);
+          sortedVideos.sort((a, b) {
+            final aHeight = a.videoResolution.height;
+            final bHeight = b.videoResolution.height;
+
+            // Birebir istenen çözünürlük eşleşmesi
+            final aExact = aHeight == targetHeight || a.qualityLabel.contains('$targetHeight');
+            final bExact = bHeight == targetHeight || b.qualityLabel.contains('$targetHeight');
+            if (aExact && !bExact) return -1;
+            if (bExact && !aExact) return 1;
+
+            // İstenen çözünürlükten küçük veya eşit olanlar önce gelir
+            final aIsLower = aHeight <= targetHeight;
+            final bIsLower = bHeight <= targetHeight;
+            if (aIsLower && !bIsLower) return -1;
+            if (bIsLower && !aIsLower) return 1;
+
+            if (aIsLower && bIsLower) {
+              // İkisi de küçükse, targetHeight'a en yakın olan (en büyük height) önce gelsin
+              if (aHeight != bHeight) return bHeight.compareTo(aHeight);
+              return b.bitrate.compareTo(a.bitrate);
+            }
+
+            // İkisi de büyükse, targetHeight'a en yakın olan (en küçük height) önce gelsin
+            if (aHeight != bHeight) return aHeight.compareTo(bHeight);
+            return b.bitrate.compareTo(a.bitrate);
+          });
+
+          videoCandidates.addAll(sortedVideos);
         }
 
         if (videoCandidates.isEmpty && manifest.muxed.isNotEmpty) {

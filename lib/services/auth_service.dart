@@ -21,11 +21,23 @@ class AuthenticatedYoutubeHttpClient extends YoutubeHttpClient {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     base['cookie'] = 'CONSENT=YES+cb';
     base['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
-    if (accessToken != null && accessToken!.isNotEmpty) {
-      base['authorization'] = 'Bearer $accessToken';
-      base['x-youtube-client-name'] = '1';
-    }
     return base;
+  }
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    // Sadece Google Video medya akışlarına veya Innertube API isteklerine token ekle.
+    // www.youtube.com/watch gibi HTML web sayfalarına ASLA Bearer token eklenmemelidir,
+    // aksi halde Google Web sunucusu isteği 401/redirect ile reddederek VideoUnavailable hatası verir!
+    final host = request.url.host.toLowerCase();
+    final path = request.url.path.toLowerCase();
+
+    if (accessToken != null && accessToken!.isNotEmpty) {
+      if (host.contains('googlevideo.com') || path.contains('/youtubei/')) {
+        request.headers['authorization'] = 'Bearer $accessToken';
+      }
+    }
+    return super.send(request);
   }
 }
 
