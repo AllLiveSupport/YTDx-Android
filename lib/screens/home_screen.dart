@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../models/video_item.dart';
 import '../theme/app_colors.dart';
 import '../widgets/video_card.dart';
 import '../widgets/music_recognition_sheet.dart';
@@ -90,11 +91,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = isMobileDevice(context);
-    final currentTopic = appState.settings.trendingTopic;
-    final currentRegion = appState.settings.region;
+    final currentTopic = context.select<AppState, String>((s) => s.settings.trendingTopic);
+    final currentRegion = context.select<AppState, String>((s) => s.settings.region);
+    final isLoadingTrending = context.select<AppState, bool>((s) => s.isLoadingTrending);
+    final trendingVideos = context.select<AppState, List<VideoItem>>((s) => s.trendingVideos);
 
     final currentRegionObj = _regions.firstWhere(
       (r) => r['code'] == currentRegion,
@@ -104,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return RefreshIndicator(
       color: AppColors.primaryBlue,
       backgroundColor: isDark ? AppColors.darkCard : Colors.white,
-      onRefresh: () => appState.refreshTrending(),
+      onRefresh: () => context.read<AppState>().refreshTrending(),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         padding: EdgeInsets.fromLTRB(
@@ -213,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             border: InputBorder.none,
                             isDense: true,
                           ),
-                          onSubmitted: (_) => _handleSearchOrPaste(appState),
+                          onSubmitted: (_) => _handleSearchOrPaste(context.read<AppState>()),
                         ),
                       ),
 
@@ -239,10 +241,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppColors.primaryBlue,
                           tooltip: I18n.tr('home_paste_btn'),
                           onPressed: () async {
+                            final state = context.read<AppState>();
                             final data = await Clipboard.getData('text/plain');
                             if (data != null && data.text != null) {
                               _searchController.text = data.text!;
-                              _handleSearchOrPaste(appState);
+                              _handleSearchOrPaste(state);
                             }
                           },
                         ),
@@ -271,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: IconButton(
                           icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
                           tooltip: I18n.tr('nav_search'),
-                          onPressed: () => _handleSearchOrPaste(appState),
+                          onPressed: () => _handleSearchOrPaste(context.read<AppState>()),
                         ),
                       ),
                     ],
@@ -394,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: InkWell(
                               onTap: () {
                                 if (!isSelected) {
-                                  appState.setTrendingTopic(key);
+                                  context.read<AppState>().setTrendingTopic(key);
                                 }
                               },
                               borderRadius: BorderRadius.circular(20),
@@ -473,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       return InkWell(
                         onTap: () {
                           if (!isSelected) {
-                            appState.setTrendingTopic(key);
+                            context.read<AppState>().setTrendingTopic(key);
                           }
                         },
                         borderRadius: BorderRadius.circular(20),
@@ -591,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 color: isDark ? AppColors.darkCard : AppColors.lightCard,
                 onSelected: (code) {
-                  appState.setRegion(code);
+                  context.read<AppState>().setRegion(code);
                 },
                 itemBuilder: (ctx) {
                   return _regions.map((r) {
@@ -655,14 +658,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'Trendleri Yenile',
                 padding: const EdgeInsets.all(6),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                onPressed: appState.isLoadingTrending ? null : () => appState.refreshTrending(),
+                onPressed: isLoadingTrending ? null : () => context.read<AppState>().refreshTrending(),
               ),
             ],
           ),
           const SizedBox(height: 14),
 
           // Loading Indicator or Video Grid
-          if (appState.isLoadingTrending)
+          if (isLoadingTrending)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 80),
@@ -675,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             )
-          else if (appState.trendingVideos.isEmpty)
+          else if (trendingVideos.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 60),
@@ -698,9 +701,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSpacing: isMobile ? 12 : 18,
                 childAspectRatio: isMobile ? 0.74 : 0.88,
               ),
-              itemCount: appState.trendingVideos.length,
+              itemCount: trendingVideos.length,
               itemBuilder: (context, index) {
-                return VideoCard(video: appState.trendingVideos[index]);
+                return VideoCard(video: trendingVideos[index]);
               },
             ),
         ],

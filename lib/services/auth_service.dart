@@ -18,12 +18,13 @@ class AuthenticatedYoutubeHttpClient extends YoutubeHttpClient {
   Map<String, String> get headers {
     final base = Map<String, String>.from(super.headers);
     base['user-agent'] =
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+        'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip';
+    base['x-youtube-client-name'] = '3';
+    base['x-youtube-client-version'] = '19.05.36';
     base['cookie'] = 'CONSENT=YES+cb';
     base['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
     if (accessToken != null && accessToken!.isNotEmpty) {
       base['authorization'] = 'Bearer $accessToken';
-      base['x-youtube-client-name'] = '1';
     }
     return base;
   }

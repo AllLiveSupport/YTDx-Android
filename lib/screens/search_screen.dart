@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../models/video_item.dart';
 import '../theme/app_colors.dart';
 import '../widgets/video_card.dart';
 import '../services/i18n.dart';
@@ -55,13 +56,16 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = isMobileDevice(context);
+    final searchQuery = context.select<AppState, String>((s) => s.searchQuery);
+    final isSearching = context.select<AppState, bool>((s) => s.isSearching);
+    final searchResults = context.select<AppState, List<VideoItem>>((s) => s.searchResults);
+    final isLoadingMore = context.select<AppState, bool>((s) => s.isLoadingMore);
 
-    if (_lastSyncedQuery != appState.searchQuery) {
-      _lastSyncedQuery = appState.searchQuery;
-      _searchController.text = appState.searchQuery;
+    if (_lastSyncedQuery != searchQuery) {
+      _lastSyncedQuery = searchQuery;
+      _searchController.text = searchQuery;
     }
 
     return Column(
@@ -130,7 +134,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           border: InputBorder.none,
                           isDense: true,
                         ),
-                        onSubmitted: (_) => _triggerSearch(appState),
+                        onSubmitted: (_) => _triggerSearch(context.read<AppState>()),
                         textInputAction: TextInputAction.search,
                       ),
                     ),
@@ -154,10 +158,11 @@ class _SearchScreenState extends State<SearchScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         onPressed: () async {
+                          final state = context.read<AppState>();
                           final data = await Clipboard.getData('text/plain');
                           if (data != null && data.text != null) {
                             _searchController.text = data.text!;
-                            _triggerSearch(appState);
+                            _triggerSearch(state);
                           }
                         },
                       ),
@@ -167,10 +172,11 @@ class _SearchScreenState extends State<SearchScreen> {
                         color: AppColors.primary,
                         padding: EdgeInsets.zero,
                         onPressed: () async {
+                          final state = context.read<AppState>();
                           final data = await Clipboard.getData('text/plain');
                           if (data != null && data.text != null) {
                             _searchController.text = data.text!;
-                            _triggerSearch(appState);
+                            _triggerSearch(state);
                           }
                         },
                       ),
@@ -179,7 +185,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                       color: AppColors.primary,
                       padding: EdgeInsets.zero,
-                      onPressed: () => _triggerSearch(appState),
+                      onPressed: () => _triggerSearch(context.read<AppState>()),
                     ),
                     const SizedBox(width: 6),
                   ],
@@ -203,14 +209,14 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (appState.isSearching)
+                if (isSearching)
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 60),
                       child: CircularProgressIndicator(color: AppColors.primary),
                     ),
                   )
-                else if (appState.searchResults.isEmpty)
+                else if (searchResults.isEmpty)
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 80),
@@ -243,13 +249,13 @@ class _SearchScreenState extends State<SearchScreen> {
                       mainAxisSpacing: isMobile ? 10 : 18,
                       childAspectRatio: isMobile ? 0.72 : 0.88,
                     ),
-                    itemCount: appState.searchResults.length,
+                    itemCount: searchResults.length,
                     itemBuilder: (context, index) {
-                      return VideoCard(video: appState.searchResults[index]);
+                      return VideoCard(video: searchResults[index]);
                     },
                   ),
 
-                if (appState.isLoadingMore)
+                if (isLoadingMore)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(

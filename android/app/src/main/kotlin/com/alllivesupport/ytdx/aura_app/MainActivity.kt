@@ -1,11 +1,14 @@
 package com.alllivesupport.ytdx.aura_app
 
+import android.content.Context
 import android.content.Intent
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.os.PowerManager
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,7 +17,72 @@ import java.nio.ByteBuffer
 class MainActivity : AudioServiceActivity() {
     private val SHARE_CHANNEL = "com.alllivesupport.ytdxstudio/share"
     private val MUXER_CHANNEL = "com.alllivesupport.ytdxstudio/muxer"
+    private val WAKELOCK_CHANNEL = "com.alllivesupport.ytdxstudio/wakelock"
     private var sharedText: String? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    private fun acquireLocks() {
+        try {
+            if (wakeLock == null) {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                wakeLock = powerManager?.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "YTDxStudio:DownloadWakeLock"
+                )?.apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wakeLock?.isHeld != true) {
+                wakeLock?.acquire(60 * 60 * 1000L) // 1 hour max safety timeout
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        try {
+            if (wifiLock == null) {
+                val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                wifiLock = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    wifiManager?.createWifiLock(
+                        WifiManager.WIFI_MODE_FULL_LOW_LATENCY,
+                        "YTDxStudio:DownloadWifiLock"
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    wifiManager?.createWifiLock(
+                        WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                        "YTDxStudio:DownloadWifiLock"
+                    )
+                }?.apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wifiLock?.isHeld != true) {
+                wifiLock?.acquire()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun releaseLocks() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        try {
+            if (wifiLock?.isHeld == true) {
+                wifiLock?.release()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,8 +176,11 @@ class MainActivity : AudioServiceActivity() {
                 val outputPath = call.argument<String>("outputPath")
 
                 if (videoPath != null && audioPath != null && outputPath != null) {
-                    // Run heavy media processing off the UI thread to prevent ANR ("App Not Responding")
+                    // Run heavy media processing off the UI thread with background priority
                     Thread {
+                        try {
+                            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+                        } catch (_: Exception) {}
                         val success = muxVideoAndAudio(videoPath, audioPath, outputPath)
                         runOnUiThread {
                             result.success(success)
@@ -128,6 +199,45 @@ class MainActivity : AudioServiceActivity() {
                 }
             } else {
                 result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WAKELOCK_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "acquire" -> {
+                    acquireLocks()
+                    val title = call.argument<String>("title") ?: "YTDx Studio İndirme"
+                    try {
+                        DownloadForegroundService.start(applicationContext, title)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    result.success(true)
+                }
+                "updateNotification" -> {
+                    val title = call.argument<String>("title") ?: "YTDx Studio İndiriliyor..."
+                    val progress = call.argument<Int>("progress") ?: 0
+                    val speed = call.argument<String>("speed") ?: ""
+                    val indeterminate = call.argument<Boolean>("indeterminate") ?: false
+                    try {
+                        DownloadForegroundService.update(applicationContext, title, progress, speed, indeterminate)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    result.success(true)
+                }
+                "release" -> {
+                    releaseLocks()
+                    try {
+                        DownloadForegroundService.stop(applicationContext)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
         }
     }
@@ -182,13 +292,15 @@ class MainActivity : AudioServiceActivity() {
 
             muxer.start()
 
-            val bufferSize = 8 * 1024 * 1024 // 8 MB Direct Buffer for 4K/8K HDR video frames
+            val bufferSize = 2 * 1024 * 1024 // 2 MB Direct Buffer (reduces RAM footprint on older devices while safely handling 4K frames)
             val buffer = ByteBuffer.allocateDirect(bufferSize)
             val videoBufferInfo = MediaCodec.BufferInfo()
             val audioBufferInfo = MediaCodec.BufferInfo()
 
             var hasVideo = true
             var hasAudio = true
+            var lastVideoTimeUs = -1L
+            var lastAudioTimeUs = -1L
 
             // Interleave video and audio samples monotonically by presentation time (sampleTime)
             while (hasVideo || hasAudio) {
@@ -202,7 +314,12 @@ class MainActivity : AudioServiceActivity() {
                     if (videoBufferInfo.size < 0) {
                         hasVideo = false
                     } else {
-                        videoBufferInfo.presentationTimeUs = videoTime
+                        // Monotonic timestamp guarantee (prevents -EINVAL crash on B-frames in WebM/MP4)
+                        val rawPts = Math.max(0L, videoTime)
+                        val finalPts = if (rawPts < lastVideoTimeUs) lastVideoTimeUs else rawPts
+                        lastVideoTimeUs = finalPts
+
+                        videoBufferInfo.presentationTimeUs = finalPts
                         videoBufferInfo.flags = videoExtractor.sampleFlags
                         muxer.writeSampleData(muxerVideoTrackIndex, buffer, videoBufferInfo)
                         videoExtractor.advance()
@@ -214,7 +331,12 @@ class MainActivity : AudioServiceActivity() {
                     if (audioBufferInfo.size < 0) {
                         hasAudio = false
                     } else {
-                        audioBufferInfo.presentationTimeUs = audioTime
+                        // Monotonic timestamp guarantee for audio track
+                        val rawPts = Math.max(0L, audioTime)
+                        val finalPts = if (rawPts < lastAudioTimeUs) lastAudioTimeUs else rawPts
+                        lastAudioTimeUs = finalPts
+
+                        audioBufferInfo.presentationTimeUs = finalPts
                         audioBufferInfo.flags = audioExtractor.sampleFlags
                         muxer.writeSampleData(muxerAudioTrackIndex, buffer, audioBufferInfo)
                         audioExtractor.advance()
@@ -224,7 +346,7 @@ class MainActivity : AudioServiceActivity() {
 
             return true
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("MainActivity", "muxVideoAndAudio failed: ${e.message}", e)
             return false
         } finally {
             try { videoExtractor.release() } catch (e: Exception) {}
@@ -234,5 +356,13 @@ class MainActivity : AudioServiceActivity() {
                 muxer?.release()
             } catch (e: Exception) {}
         }
+    }
+
+    override fun onDestroy() {
+        releaseLocks()
+        try {
+            DownloadForegroundService.stop(applicationContext)
+        } catch (_: Exception) {}
+        super.onDestroy()
     }
 }

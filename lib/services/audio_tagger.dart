@@ -25,7 +25,7 @@ class AudioTagger {
       // Use pre-downloaded local art if available, otherwise download
       Uint8List? imageBytes;
       if (localArtPath != null && File(localArtPath).existsSync()) {
-        imageBytes = File(localArtPath).readAsBytesSync();
+        imageBytes = await File(localArtPath).readAsBytes();
       } else if (thumbnailUrl.isNotEmpty) {
         try {
           final res = await http

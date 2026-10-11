@@ -171,11 +171,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final currentTabIndex = appState.currentTabIndex;
+    final currentTabIndex = context.select<AppState, int>((s) => s.currentTabIndex);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = isMobileDevice(context);
-    final activeDownloadsCount = appState.tasks.where((t) => t.status != DownloadStatus.completed).length;
+    final activeDownloadsCount = context.select<AppState, int>(
+      (s) => s.tasks.where((t) => t.status != DownloadStatus.completed).length,
+    );
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
@@ -219,7 +220,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             if (isMobile)
               UnifiedBottomDock(
                 selectedIndex: currentTabIndex,
-                onItemSelected: (index) => appState.setTabIndex(index),
+                onItemSelected: (index) => context.read<AppState>().setTabIndex(index),
                 activeDownloadsCount: activeDownloadsCount,
               ),
           ],

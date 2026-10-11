@@ -20,7 +20,7 @@ class VideoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
+    final audioFormat = context.select<AppState, String>((s) => s.settings.defaultAudioFormat);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return RepaintBoundary(
@@ -158,7 +158,7 @@ class VideoCard extends StatelessWidget {
                         label: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            appState.settings.defaultAudioFormat.toUpperCase(),
+                            audioFormat.toUpperCase(),
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                         ),
@@ -169,18 +169,19 @@ class VideoCard extends StatelessWidget {
                           elevation: 0,
                         ),
                         onPressed: () {
+                          final state = context.read<AppState>();
                           showQualityModal(
                             context,
                             video: video,
                             initialIsAudio: true,
                             onConfirm: (fmt, qlt) {
                               final isAud = DownloadTask.isAudioFormat(fmt);
-                              appState.startDownload(
+                              state.startDownload(
                                 video: video,
                                 isAudio: isAud,
                                 format: fmt,
                                 quality: qlt,
-                                outputPath: appState.settings.downloadPath,
+                                outputPath: state.settings.downloadPath,
                               );
                             },
                           );
@@ -204,18 +205,19 @@ class VideoCard extends StatelessWidget {
                           elevation: 0,
                         ),
                         onPressed: () {
+                          final state = context.read<AppState>();
                           showQualityModal(
                             context,
                             video: video,
                             initialIsAudio: false,
                             onConfirm: (fmt, qlt) {
                               final isAud = DownloadTask.isAudioFormat(fmt);
-                              appState.startDownload(
+                              state.startDownload(
                                 video: video,
                                 isAudio: isAud,
                                 format: fmt,
                                 quality: qlt,
-                                outputPath: appState.settings.downloadPath,
+                                outputPath: state.settings.downloadPath,
                               );
                             },
                           );

@@ -32,7 +32,7 @@ class AppState extends ChangeNotifier {
   // Downloads Queue & Completed Library
   List<DownloadTask> tasks = [];
   List<DownloadTask> completedTasks = [];
-  static const int maxConcurrentDownloads = 2; // Keep UI smooth & prevent network congestion
+  int get maxConcurrentDownloads => settings.maxConcurrentDownloads;
 
   // Playlists
   List<VideoItem> playlistVideos = [];
@@ -119,6 +119,15 @@ class AppState extends ChangeNotifier {
   void setCrossfadeSeconds(int seconds) {
     settings.crossfadeSeconds = seconds;
     saveSettings();
+    notifyListeners();
+  }
+
+  void setMaxConcurrentDownloads(int count) {
+    if (count < 1) count = 1;
+    if (count > 5) count = 5;
+    settings.maxConcurrentDownloads = count;
+    saveSettings();
+    _processQueue();
     notifyListeners();
   }
 
@@ -402,7 +411,10 @@ class AppState extends ChangeNotifier {
   }
 
   void _executeTask(DownloadTask task) {
-    task.status = DownloadStatus.downloading;
+    task.updateProgress(
+      status: DownloadStatus.downloading,
+      speed: I18n.tr('downloads_connecting'),
+    );
     notifyListeners();
 
     DownloadManager.executeDownload(

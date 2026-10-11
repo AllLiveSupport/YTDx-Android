@@ -1,6 +1,8 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:aura_app/models/download_task.dart';
+import 'package:aura_app/models/app_settings.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class AuthenticatedYoutubeHttpClient extends YoutubeHttpClient {
@@ -53,6 +55,36 @@ void main() {
       final yt = YoutubeExplode(httpClient: authClient);
       expect(yt, isNotNull);
       yt.close();
+    });
+
+    test('Wakelock channel responds to acquire and release', () async {
+      final List<String> channelCalls = [];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('com.alllivesupport.ytdxstudio/wakelock'),
+        (MethodCall methodCall) async {
+          channelCalls.add(methodCall.method);
+          return true;
+        },
+      );
+
+      const channel = MethodChannel('com.alllivesupport.ytdxstudio/wakelock');
+      await channel.invokeMethod('acquire');
+      await channel.invokeMethod('release');
+
+      expect(channelCalls, equals(['acquire', 'release']));
+    });
+
+    test('AppSettings handles maxConcurrentDownloads serialization and defaults', () {
+      final defaultSettings = AppSettings.defaultSettings();
+      expect(defaultSettings.maxConcurrentDownloads, equals(2));
+
+      final json = defaultSettings.toJson();
+      expect(json['maxConcurrentDownloads'], equals(2));
+
+      json['maxConcurrentDownloads'] = 5;
+      final restoredSettings = AppSettings.fromJson(json);
+      expect(restoredSettings.maxConcurrentDownloads, equals(5));
     });
   });
 }

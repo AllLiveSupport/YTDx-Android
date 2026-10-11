@@ -27,9 +27,13 @@ class AudioConverter {
     final format = targetFormat.toLowerCase().trim();
     final q = quality.toLowerCase().trim();
 
+    // Safe CPU Concurrency: Limit FFmpeg threads so it NEVER starves the Flutter UI & Android OS.
+    // Leaves at least 1-2 CPU cores 100% free for 90 FPS Flutter rendering.
+    final safeThreads = (Platform.numberOfProcessors > 2) ? 2 : 1;
+
     AppLogger.info(
       _tag,
-      '🔄 Ses Dönüştürme Başlatılıyor: $format ($q, kaynakWebm=$isSourceWebm) -> $outputPath',
+      '🔄 Ses Dönüştürme Başlatılıyor: $format ($q, kaynakWebm=$isSourceWebm, threads=$safeThreads) -> $outputPath',
     );
 
     // Ensure parent directory of outputPath exists
@@ -62,7 +66,7 @@ class AudioConverter {
       }
       args = [
         '-y',
-        '-threads', '2',
+        '-threads', '$safeThreads',
         '-i', inputPath,
         '-vn',
         '-c:a', 'libmp3lame',
@@ -73,10 +77,9 @@ class AudioConverter {
     } else if (format == 'opus') {
       int bitrate = q.contains('70') ? 70 : 160;
       if (isSourceWebm) {
-        // Kaynak zaten WebM/Opus olduğunda akış kopyalama (stream copy) en hızlı ve kayıpsızdır
+        // Kaynak zaten WebM/Opus olduğunda akış kopyalama (stream copy) en hızlı ve kayıpsızdır (< 0.1s)
         args = [
           '-y',
-          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'copy',
@@ -86,7 +89,7 @@ class AudioConverter {
         // Kaynak MP4/Muxed (AAC) olduğunda -c:a copy başarısız olur; doğrudan libopus ile kodla
         args = [
           '-y',
-          '-threads', '2',
+          '-threads', '$safeThreads',
           '-i', inputPath,
           '-vn',
           '-c:a', 'libopus',
@@ -97,10 +100,9 @@ class AudioConverter {
     } else {
       // M4A / AAC
       if (!isSourceWebm) {
-        // Kaynak zaten MP4/AAC olduğunda kayıpsız stream copy
+        // Kaynak zaten MP4/AAC olduğunda kayıpsız stream copy (< 0.1s)
         args = [
           '-y',
-          '-threads', '2',
           '-i', inputPath,
           '-vn',
           '-c:a', 'copy',
@@ -111,7 +113,7 @@ class AudioConverter {
         int bitrate = q.contains('128') ? 128 : 256;
         args = [
           '-y',
-          '-threads', '2',
+          '-threads', '$safeThreads',
           '-i', inputPath,
           '-vn',
           '-c:a', 'aac',
@@ -143,7 +145,7 @@ class AudioConverter {
         AppLogger.warn(_tag, 'Stream copy başarısız, libopus ile yeniden kodlanıyor...');
         final fallbackArgs = [
           '-y',
-          '-threads', '2',
+          '-threads', '$safeThreads',
           '-i', inputPath,
           '-vn',
           '-c:a', 'libopus',
@@ -161,7 +163,7 @@ class AudioConverter {
         AppLogger.warn(_tag, 'libopus başarısız, native opus (-strict -2) deneniyor...');
         final nativeOpusArgs = [
           '-y',
-          '-threads', '2',
+          '-threads', '$safeThreads',
           '-i', inputPath,
           '-vn',
           '-c:a', 'opus',
@@ -180,7 +182,7 @@ class AudioConverter {
         AppLogger.warn(_tag, 'Stream copy başarısız, aac ile yeniden kodlanıyor...');
         final fallbackArgs = [
           '-y',
-          '-threads', '2',
+          '-threads', '$safeThreads',
           '-i', inputPath,
           '-vn',
           '-c:a', 'aac',
@@ -200,6 +202,108 @@ class AudioConverter {
       return false;
     } catch (e) {
       AppLogger.error(_tag, '❌ AudioConverter istisnası: $e');
+      return false;
+    }
+  }
+
+  /// Merges video and audio files using FFmpeg stream copy (-c copy) or adaptive fallback.
+  /// Works for both MP4 (H.264/AAC) and WebM (VP9/Opus) with zero video quality loss.
+  static Future<bool> muxVideoAndAudio({
+    required String videoPath,
+    required String audioPath,
+    required String outputPath,
+  }) async {
+    final vFile = File(videoPath);
+    final aFile = File(audioPath);
+    if (!vFile.existsSync() || !aFile.existsSync()) {
+      AppLogger.error(_tag, 'muxVideoAndAudio: Girdi dosyaları eksik.');
+      return false;
+    }
+
+    final destFile = File(outputPath);
+    if (destFile.existsSync()) {
+      try { destFile.deleteSync(); } catch (_) {}
+    }
+
+    final safeThreads = (Platform.numberOfProcessors > 2) ? 2 : 1;
+    final isWebm = outputPath.toLowerCase().endsWith('.webm') || outputPath.toLowerCase().endsWith('.mkv');
+
+    // 1. Strateji: Kayıpsız ve anında doğrudan Stream Copy (-map 0:v:0 -map 1:a:0 -c copy)
+    final copyArgs = [
+      '-y',
+      '-threads', '$safeThreads',
+      '-i', videoPath,
+      '-i', audioPath,
+      '-map', '0:v:0',
+      '-map', '1:a:0',
+      '-c:v', 'copy',
+      '-c:a', 'copy',
+      outputPath,
+    ];
+
+    AppLogger.info(_tag, '🎬 FFmpeg Video+Audio Mux başlatılıyor (Strateji 1 - Copy): ${copyArgs.join(' ')}');
+    try {
+      final session = await FFmpegKit.executeWithArguments(copyArgs);
+      final returnCode = await session.getReturnCode();
+      if (ReturnCode.isSuccess(returnCode) &&
+          destFile.existsSync() &&
+          destFile.lengthSync() > 1024) {
+        AppLogger.success(_tag, '✅ FFmpeg stream copy başarılı: $outputPath (${(destFile.lengthSync() / (1024 * 1024)).toStringAsFixed(1)} MB)');
+        return true;
+      }
+      final output = await session.getOutput();
+      AppLogger.warn(_tag, '⚠ FFmpeg stream copy çıkış kodu: ${returnCode?.getValue()}, çıktı: $output');
+    } catch (e) {
+      AppLogger.warn(_tag, '⚠ FFmpeg stream copy hatası: $e');
+    }
+
+    // 2. Strateji (Yedek): Konteyner veya codec uyumsuzluğunda akıllı ses transcode ile kurtarma
+    AppLogger.warn(_tag, '⚠ FFmpeg stream copy başarısız oldu, codec uyumlu ses kodlama devreye giriyor...');
+    if (destFile.existsSync()) {
+      try { destFile.deleteSync(); } catch (_) {}
+    }
+
+    final fallbackArgs = isWebm
+        ? [
+            '-y',
+            '-threads', '$safeThreads',
+            '-i', videoPath,
+            '-i', audioPath,
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-c:v', 'copy',
+            '-c:a', 'libopus',
+            '-b:a', '160k',
+            outputPath,
+          ]
+        : [
+            '-y',
+            '-threads', '$safeThreads',
+            '-i', videoPath,
+            '-i', audioPath,
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            outputPath,
+          ];
+
+    AppLogger.info(_tag, '🎬 FFmpeg Video+Audio Mux başlatılıyor (Strateji 2 - Fallback): ${fallbackArgs.join(' ')}');
+    try {
+      final session = await FFmpegKit.executeWithArguments(fallbackArgs);
+      final returnCode = await session.getReturnCode();
+      if (ReturnCode.isSuccess(returnCode) &&
+          destFile.existsSync() &&
+          destFile.lengthSync() > 1024) {
+        AppLogger.success(_tag, '✅ FFmpeg yedek mux başarılı: $outputPath (${(destFile.lengthSync() / (1024 * 1024)).toStringAsFixed(1)} MB)');
+        return true;
+      }
+      final output = await session.getOutput();
+      AppLogger.error(_tag, '❌ FFmpeg yedek mux başarısız: ${returnCode?.getValue()}, çıktı: $output');
+      return false;
+    } catch (e) {
+      AppLogger.error(_tag, '❌ FFmpeg mux hatası: $e');
       return false;
     }
   }

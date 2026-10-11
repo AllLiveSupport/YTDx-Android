@@ -596,6 +596,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                Divider(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                const SizedBox(height: 10),
+                Text(
+                  I18n.tr('settings_concurrent_title'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  I18n.tr('settings_concurrent_sub'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _SettingsConcurrentChip(
+                        count: 1,
+                        label: I18n.tr('settings_concurrent_1'),
+                        badge: I18n.tr('settings_concurrent_1_sub'),
+                        color: Colors.blueGrey,
+                        icon: Icons.battery_saver_rounded,
+                        isSelected: settings.maxConcurrentDownloads == 1,
+                        isDark: isDark,
+                        onTap: () => appState.setMaxConcurrentDownloads(1),
+                      ),
+                      const SizedBox(width: 8),
+                      _SettingsConcurrentChip(
+                        count: 2,
+                        label: I18n.tr('settings_concurrent_2'),
+                        badge: I18n.tr('settings_concurrent_2_sub'),
+                        color: AppColors.primaryBlue,
+                        icon: Icons.balance_rounded,
+                        isSelected: settings.maxConcurrentDownloads == 2,
+                        isDark: isDark,
+                        onTap: () => appState.setMaxConcurrentDownloads(2),
+                      ),
+                      const SizedBox(width: 8),
+                      _SettingsConcurrentChip(
+                        count: 3,
+                        label: I18n.tr('settings_concurrent_3'),
+                        badge: I18n.tr('settings_concurrent_3_sub'),
+                        color: Colors.tealAccent,
+                        icon: Icons.wifi_rounded,
+                        isSelected: settings.maxConcurrentDownloads == 3,
+                        isDark: isDark,
+                        onTap: () => appState.setMaxConcurrentDownloads(3),
+                      ),
+                      const SizedBox(width: 8),
+                      _SettingsConcurrentChip(
+                        count: 4,
+                        label: I18n.tr('settings_concurrent_4'),
+                        badge: I18n.tr('settings_concurrent_4_sub'),
+                        color: Colors.amberAccent,
+                        icon: Icons.speed_rounded,
+                        isSelected: settings.maxConcurrentDownloads == 4,
+                        isDark: isDark,
+                        onTap: () => appState.setMaxConcurrentDownloads(4),
+                      ),
+                      const SizedBox(width: 8),
+                      _SettingsConcurrentChip(
+                        count: 5,
+                        label: I18n.tr('settings_concurrent_5'),
+                        badge: I18n.tr('settings_concurrent_5_sub'),
+                        color: Colors.purpleAccent,
+                        icon: Icons.bolt_rounded,
+                        isSelected: settings.maxConcurrentDownloads == 5,
+                        isDark: isDark,
+                        onTap: () => appState.setMaxConcurrentDownloads(5),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1337,6 +1418,91 @@ class _SettingsFormatChip extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? color : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsConcurrentChip extends StatelessWidget {
+  final int count;
+  final String label;
+  final String badge;
+  final IconData icon;
+  final Color color;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _SettingsConcurrentChip({
+    required this.count,
+    required this.label,
+    required this.badge,
+    required this.icon,
+    required this.color,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: isDark ? 0.22 : 0.15)
+              : (isDark ? const Color(0xFF191B22) : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: isSelected ? color : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected ? color : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: isSelected ? color.withValues(alpha: 0.25) : (isDark ? Colors.black26 : Colors.black12),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                badge,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? color : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+                ),
               ),
             ),
           ],

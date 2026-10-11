@@ -17,6 +17,7 @@ class AppSettings {
   bool isGoogleLinked;
   bool enableHaptics;
   int crossfadeSeconds; // 0 = off, 1-5 seconds
+  int maxConcurrentDownloads; // 1-5 concurrent downloads (default: 2)
 
   AppSettings({
     this.themeMode = 'dark',
@@ -34,6 +35,7 @@ class AppSettings {
     this.isGoogleLinked = false,
     this.enableHaptics = true,
     this.crossfadeSeconds = 2,
+    this.maxConcurrentDownloads = 2,
   });
 
   /// Synchronous default - uses a placeholder that gets replaced on first init
@@ -113,6 +115,7 @@ class AppSettings {
       isGoogleLinked: json['isGoogleLinked'] ?? def.isGoogleLinked,
       enableHaptics: json['enableHaptics'] ?? def.enableHaptics,
       crossfadeSeconds: json['crossfadeSeconds'] ?? def.crossfadeSeconds,
+      maxConcurrentDownloads: json['maxConcurrentDownloads'] ?? def.maxConcurrentDownloads,
     );
   }
 
@@ -132,5 +135,6 @@ class AppSettings {
     'isGoogleLinked': isGoogleLinked,
     'enableHaptics': enableHaptics,
     'crossfadeSeconds': crossfadeSeconds,
+    'maxConcurrentDownloads': maxConcurrentDownloads,
   };
 }
