@@ -14,6 +14,7 @@ import 'audio_tagger.dart';
 import 'auth_service.dart';
 import 'lyrics_service.dart';
 import 'native_media_muxer.dart';
+import 'visionos_stream_resolver.dart';
 import 'youtube_service.dart';
 
 const _tag = 'DownloadMgr';
@@ -326,10 +327,32 @@ class DownloadManager {
     return 0;
   }
 
-  /// Fetches a fresh stream URL for the given video and itag, offset to the specified playback second.
-  /// Bypasses YouTube's 60-second / 20MB playback window limit without requiring PO tokens or watch pages.
-  static Future<String?> _fetchStreamUrlForOffset(String videoId, int itag, int startTimeSecs) async {
+  /// Fetches an unthrottled direct stream URL for the given video and itag.
+  /// Bypasses YouTube's 60-second / 174MB playback cutoff using VisionOS client,
+  /// with automatic fallback to authenticated Android Innertube.
+  static Future<String?> _fetchStreamUrlForOffset(
+    String videoId,
+    int itag,
+    int startTimeSecs, {
+    bool forceRefresh = false,
+  }) async {
     if (videoId.isEmpty) return null;
+
+    // 1. Try Unthrottled VisionOS Resolver (Zero 403, Zero 60s limit on any range)
+    try {
+      final visionosUrl = await VisionosStreamResolver.getStreamUrl(
+        videoId,
+        itag,
+        forceRefresh: forceRefresh,
+      );
+      if (visionosUrl != null && visionosUrl.isNotEmpty) {
+        return visionosUrl;
+      }
+    } catch (e) {
+      AppLogger.warn(_tag, 'VisionOS stream resolve uyarısı: $e');
+    }
+
+    // 2. Fallback to Authenticated Android Innertube
     try {
       final token = await AuthService.getAccessToken();
       final headers = <String, String>{
@@ -405,6 +428,20 @@ class DownloadManager {
           : (YouTubeService.extractVideoId(task.video.url) ?? '');
       final totalDurationSecs = _parseDurationToSeconds(task.video.duration);
 
+      // 🚀 Unthrottled VisionOS Stream Resolution:
+      // YouTube enforces a strict 60s (~174MB) playback cutoff on standard Android CDN streams.
+      // We resolve the unthrottled VisionOS direct stream URL which has zero playback restrictions,
+      // allowing full line-speed download across the entire file (even 8K/4K 1GB+ files).
+      if (videoId.isNotEmpty) {
+        try {
+          final visionosUrl = await _fetchStreamUrlForOffset(videoId, streamInfo.tag, 0);
+          if (visionosUrl != null && visionosUrl.isNotEmpty) {
+            currentStreamUrl = visionosUrl;
+            AppLogger.info(_tag, '⚡ Unthrottled VisionOS stream URL aktif kılındı (itag=${streamInfo.tag})');
+          }
+        } catch (_) {}
+      }
+
       // Probe totalBytes if <= 0
       if (expectedBytes <= 0) {
         try {
@@ -412,9 +449,13 @@ class DownloadManager {
           probeClient.connectionTimeout = const Duration(seconds: 6);
           final probeReq = await probeClient.getUrl(Uri.parse(currentStreamUrl));
           probeReq.headers.add('Range', 'bytes=0-0');
-          probeReq.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
-          probeReq.headers.add('X-YouTube-Client-Name', '3');
-          probeReq.headers.add('X-YouTube-Client-Version', '19.05.36');
+          if (currentStreamUrl.contains('c=VISIONOS')) {
+            probeReq.headers.add('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15');
+          } else {
+            probeReq.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
+            probeReq.headers.add('X-YouTube-Client-Name', '3');
+            probeReq.headers.add('X-YouTube-Client-Version', '19.05.36');
+          }
           final probeResp = await probeReq.close();
           final cr = probeResp.headers.value('content-range');
           if (cr != null && cr.contains('/')) {
@@ -493,11 +534,16 @@ class DownloadManager {
                   while (attempts < 3 && !sliceDone && task.status != DownloadStatus.cancelled) {
                     attempts++;
                     try {
+                      final isVisionUrl = workerUrl.contains('c=VISIONOS');
                       var req = await client.getUrl(Uri.parse(workerUrl));
                       req.headers.add('Range', 'bytes=$start-$end');
-                      req.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
-                      req.headers.add('X-YouTube-Client-Name', '3');
-                      req.headers.add('X-YouTube-Client-Version', '19.05.36');
+                      if (isVisionUrl) {
+                        req.headers.add('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15');
+                      } else {
+                        req.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
+                        req.headers.add('X-YouTube-Client-Name', '3');
+                        req.headers.add('X-YouTube-Client-Version', '19.05.36');
+                      }
                       req.headers.add('Accept-Encoding', 'identity');
 
                       var response = await req.close();
@@ -506,17 +552,27 @@ class DownloadManager {
                         final currentSec = (totalDurationSecs > 0 && expectedBytes > 0)
                             ? ((start / expectedBytes) * totalDurationSecs).toInt()
                             : (start * 8) ~/ (streamInfo.bitrate.bitsPerSecond > 0 ? streamInfo.bitrate.bitsPerSecond : 3000000);
-                        final refreshedUrl = await _fetchStreamUrlForOffset(videoId, streamInfo.tag, currentSec);
+                        final refreshedUrl = await _fetchStreamUrlForOffset(
+                          videoId,
+                          streamInfo.tag,
+                          currentSec,
+                          forceRefresh: true,
+                        );
                         if (refreshedUrl != null && refreshedUrl.isNotEmpty) {
                           workerUrl = refreshedUrl;
+                          final isRefreshedVision = workerUrl.contains('c=VISIONOS');
                           client.close();
                           client = HttpClient();
                           client.connectionTimeout = const Duration(seconds: 10);
                           req = await client.getUrl(Uri.parse(workerUrl));
                           req.headers.add('Range', 'bytes=$start-$end');
-                          req.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
-                          req.headers.add('X-YouTube-Client-Name', '3');
-                          req.headers.add('X-YouTube-Client-Version', '19.05.36');
+                          if (isRefreshedVision) {
+                            req.headers.add('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15');
+                          } else {
+                            req.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
+                            req.headers.add('X-YouTube-Client-Name', '3');
+                            req.headers.add('X-YouTube-Client-Version', '19.05.36');
+                          }
                           req.headers.add('Accept-Encoding', 'identity');
                           response = await req.close();
                         }
@@ -607,9 +663,13 @@ class DownloadManager {
           final client = HttpClient();
           client.connectionTimeout = const Duration(seconds: 15);
           final req = await client.getUrl(Uri.parse(currentStreamUrl));
-          req.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
-          req.headers.add('X-YouTube-Client-Name', '3');
-          req.headers.add('X-YouTube-Client-Version', '19.05.36');
+          if (currentStreamUrl.contains('c=VISIONOS')) {
+            req.headers.add('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15');
+          } else {
+            req.headers.add('User-Agent', 'com.google.android.youtube/19.05.36 (Linux; U; Android 14; TR) gzip');
+            req.headers.add('X-YouTube-Client-Name', '3');
+            req.headers.add('X-YouTube-Client-Version', '19.05.36');
+          }
           final response = await req.close();
           final raf = await targetFile.open(mode: FileMode.write);
           await for (final chunk in response) {

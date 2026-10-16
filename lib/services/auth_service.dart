@@ -22,7 +22,7 @@ class AuthenticatedYoutubeHttpClient extends YoutubeHttpClient {
     base['x-youtube-client-name'] = '3';
     base['x-youtube-client-version'] = '19.05.36';
     base['cookie'] = 'CONSENT=YES+cb';
-    base['accept-language'] = 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7';
+    base['accept-language'] = 'en-US,en;q=0.9';
     if (accessToken != null && accessToken!.isNotEmpty) {
       base['authorization'] = 'Bearer $accessToken';
     }

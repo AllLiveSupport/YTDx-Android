@@ -275,25 +275,42 @@ class YouTubeService {
     }
 
     List<VideoItem> results = [];
+    final seenIds = <String>{};
 
-    // 1. Pure Dart Engine (YoutubeExplode)
-    try {
-      _activeYt?.close();
-      _activeYt = await AuthService.createYoutubeClient();
-      _activeSearchList = await _activeYt!.search.search(cleanQuery);
-      final items = _parseSearchList(_activeSearchList!);
-      if (items.isNotEmpty) results = items;
-    } catch (_) {}
+    // 1. Run YoutubeExplode and InnerTube simultaneously for maximum results
+    final futures = await Future.wait([
+      // Engine 1: YoutubeExplode (returns up to 20 rich results with durations)
+      Future<List<VideoItem>>(() async {
+        try {
+          _activeYt?.close();
+          _activeYt = await AuthService.createYoutubeClient();
+          _activeSearchList = await _activeYt!.search.search(cleanQuery);
+          return _parseSearchList(_activeSearchList!);
+        } catch (_) {
+          return <VideoItem>[];
+        }
+      }),
+      // Engine 2: InnerTube with new lockupViewModel parser (gets playlists, courses, Shorts)
+      Future<List<VideoItem>>(() async {
+        try {
+          return await _fetchInnerTubeSearch(query: cleanQuery, region: 'US');
+        } catch (_) {
+          return <VideoItem>[];
+        }
+      }),
+    ]);
 
-    // 2. High-Speed InnerTube Search Fallback (Direct YouTube JSON API - never blocked)
-    if (results.isEmpty) {
-      try {
-        final innerItems = await _fetchInnerTubeSearch(query: cleanQuery, region: 'US');
-        if (innerItems.isNotEmpty) results = innerItems;
-      } catch (_) {}
+    // Merge both result sets, deduplicating by video ID
+    for (final batch in futures) {
+      for (final item in batch) {
+        if (!seenIds.contains(item.id)) {
+          seenIds.add(item.id);
+          results.add(item);
+        }
+      }
     }
 
-    // 3. Subprocess Fallback (yt-dlp for desktop)
+    // 2. Subprocess Fallback (yt-dlp for desktop) — only if both engines failed
     if (results.isEmpty) {
       results = await _fallbackYtDlpSearch(cleanQuery);
     }
@@ -640,7 +657,9 @@ class YouTubeService {
     }
   }
 
-  /// Hits YouTube Innertube /search endpoint directly with anti-spam filters
+  /// Hits YouTube Innertube /search endpoint directly with anti-spam filters.
+  /// Supports the new lockupViewModel format (YouTube 2024+) in addition to
+  /// the classic videoRenderer.
   static Future<List<VideoItem>> _fetchInnerTubeSearch({
     required String query,
     required String region,
@@ -652,7 +671,9 @@ class YouTubeService {
         'client': {
           'clientName': 'WEB',
           'clientVersion': '2.20240101.01.00',
-          'hl': _regionToLang(region),
+          // Always use 'en' for hl so YouTube returns proper metadata (avoiding Turkish
+          // time-unit strings like "ay", "yil" that can break parsers).
+          'hl': 'en',
           'gl': region.toUpperCase(),
           'utcOffsetMinutes': _regionToOffset(region),
         },
@@ -665,6 +686,7 @@ class YouTubeService {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
       body: jsonEncode(body),
     ).timeout(const Duration(seconds: 10));
@@ -675,17 +697,81 @@ class YouTubeService {
     final videos = <VideoItem>[];
     final seenIds = <String>{};
 
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /// Anti-spam filter: returns true if the video should be included.
+    bool isValid(String title, String dur) {
+      final lowerTitle = title.toLowerCase();
+      int durMinutes = 0;
+      if (dur.isNotEmpty) {
+        final parts = dur.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+        if (parts.length == 2) durMinutes = parts[0];
+        if (parts.length == 3) durMinutes = parts[0] * 60 + parts[1];
+      }
+      if (topic == 'music') {
+        if (durMinutes > 8 ||
+            lowerTitle.contains('saatlik') ||
+            lowerTitle.contains('non-stop') ||
+            lowerTitle.contains('full albüm') ||
+            lowerTitle.contains('türkçe pop müzik 202') ||
+            lowerTitle.contains('türkçe pop remix 202')) {
+          return false;
+        }
+      } else if (topic == 'movies') {
+        if (durMinutes > 7) return false;
+      }
+      return true;
+    }
+
+    void addVideo({required String id, required String title, String channel = '',
+        String thumb = '', String dur = '', String views = ''}) {
+      if (id.isEmpty || title.isEmpty || seenIds.contains(id)) return;
+      if (!isValid(title, dur)) return;
+      seenIds.add(id);
+      videos.add(VideoItem(
+        id: id,
+        url: 'https://www.youtube.com/watch?v=$id',
+        title: title,
+        channel: channel.isNotEmpty ? channel : 'YouTube',
+        thumbnail: thumb.isNotEmpty
+            ? thumb.replaceAll('http://', 'https://')
+            : 'https://i.ytimg.com/vi/$id/mqdefault.jpg',
+        duration: dur,
+        viewCount: views.isNotEmpty ? views : null,
+      ));
+    }
+
+    /// Finds the first watchEndpoint videoId (11 chars) in a nested tree.
+    String? findWatchVideoId(dynamic node) {
+      if (node is Map) {
+        final we = node['watchEndpoint'];
+        if (we is Map) {
+          final vid = we['videoId'];
+          if (vid is String && vid.length == 11) return vid;
+        }
+        for (final v in node.values) {
+          final r = findWatchVideoId(v);
+          if (r != null) return r;
+        }
+      } else if (node is List) {
+        for (final item in node) {
+          final r = findWatchVideoId(item);
+          if (r != null) return r;
+        }
+      }
+      return null;
+    }
+
     void walk(dynamic node) {
       if (node is Map) {
+        // ── 1. Classic videoRenderer ─────────────────────────────────────────
         if (node.containsKey('videoRenderer')) {
           final vr = node['videoRenderer'];
           if (vr is Map) {
             final id = vr['videoId'] as String?;
-            if (id != null && id.isNotEmpty && !seenIds.contains(id)) {
+            if (id != null && id.isNotEmpty) {
               String title = '';
-              try {
-                title = vr['title']?['runs']?[0]?['text'] ?? vr['title']?['simpleText'] ?? '';
-              } catch (_) {}
+              try { title = vr['title']?['runs']?[0]?['text'] ?? vr['title']?['simpleText'] ?? ''; } catch (_) {}
               String channel = '';
               try {
                 channel = vr['longBylineText']?['runs']?[0]?['text'] ??
@@ -694,63 +780,126 @@ class YouTubeService {
               String thumb = '';
               try {
                 final thumbs = vr['thumbnail']?['thumbnails'] as List?;
-                if (thumbs != null && thumbs.isNotEmpty) {
-                  thumb = thumbs.last['url'] ?? '';
-                }
+                if (thumbs != null && thumbs.isNotEmpty) thumb = thumbs.last['url'] ?? '';
               } catch (_) {}
               String dur = '';
-              try {
-                dur = vr['lengthText']?['simpleText'] ??
-                    vr['lengthText']?['runs']?[0]?['text'] ?? '';
-              } catch (_) {}
+              try { dur = vr['lengthText']?['simpleText'] ?? vr['lengthText']?['runs']?[0]?['text'] ?? ''; } catch (_) {}
               String views = '';
-              try {
-                views = vr['shortViewCountText']?['simpleText'] ??
-                    vr['viewCountText']?['simpleText'] ?? '';
-              } catch (_) {}
+              try { views = vr['shortViewCountText']?['simpleText'] ?? vr['viewCountText']?['simpleText'] ?? ''; } catch (_) {}
+              addVideo(id: id, title: title, channel: channel, thumb: thumb, dur: dur, views: views);
+            }
+          }
+          return; // don't double-recurse into videoRenderer internals
+        }
 
-              // Duration parsing
-              int durMinutes = 0;
-              if (dur.isNotEmpty) {
-                final parts = dur.split(':').map((e) => int.tryParse(e) ?? 0).toList();
-                if (parts.length == 2) durMinutes = parts[0];
-                if (parts.length == 3) durMinutes = parts[0] * 60 + parts[1];
+        // ── 2. New lockupViewModel (YouTube 2024+ search format) ──────────────
+        if (node.containsKey('lockupViewModel')) {
+          final lm = node['lockupViewModel'];
+          if (lm is Map) {
+            final contentType = lm['contentType'] as String?;
+            final contentId = lm['contentId'] as String?;
+
+            if (contentType == 'LOCKUP_CONTENT_TYPE_VIDEO' ||
+                contentType == 'LOCKUP_CONTENT_TYPE_SHORTS') {
+              if (contentId != null && contentId.length == 11) {
+                String title = '';
+                try { title = lm['metadata']?['lockupMetadataViewModel']?['title']?['content'] ?? ''; } catch (_) {}
+                String thumb = '';
+                try {
+                  final imgs = lm['contentImage']?['thumbnailViewModel']?['image']?['sources'] as List?;
+                  if (imgs != null && imgs.isNotEmpty) thumb = imgs.last['url'] ?? '';
+                } catch (_) {}
+                String dur = '';
+                try {
+                  final overlays = lm['contentImage']?['thumbnailViewModel']?['overlays'] as List?;
+                  if (overlays != null) {
+                    for (final b in overlays) {
+                      final t = b?['thumbnailOverlayTimeStatusViewModel']?['text']?['content'];
+                      if (t is String && t.contains(':')) { dur = t; break; }
+                    }
+                  }
+                } catch (_) {}
+                addVideo(id: contentId, title: title, thumb: thumb, dur: dur);
               }
-
-              // Anti-spam filters:
-              // 1. Music: reject long DJ compilations, mix sets, or 1-hour loops
-              bool valid = true;
-              final lowerTitle = title.toLowerCase();
-              if (topic == 'music') {
-                if (durMinutes > 8 ||
-                    lowerTitle.contains('saatlik') ||
-                    lowerTitle.contains('non-stop') ||
-                    lowerTitle.contains('full albüm') ||
-                    lowerTitle.contains('türkçe pop müzik 202') ||
-                    lowerTitle.contains('türkçe pop remix 202')) {
-                  valid = false;
+            } else if (contentId != null && (
+                contentType == 'LOCKUP_CONTENT_TYPE_COURSE' ||
+                contentType == 'LOCKUP_CONTENT_TYPE_PLAYLIST')) {
+              // For playlists/courses: extract first playable video from itemPlayback
+              final videoId = findWatchVideoId(lm['itemPlayback']);
+              if (videoId != null) {
+                String title = '';
+                try { title = lm['metadata']?['lockupMetadataViewModel']?['title']?['content'] ?? ''; } catch (_) {}
+                String thumb = '';
+                try {
+                  final imgs = lm['contentImage']?['collectionThumbnailViewModel']
+                      ?['primaryThumbnail']?['thumbnailViewModel']?['image']?['sources'] as List?;
+                  if (imgs != null && imgs.isNotEmpty) thumb = imgs.last['url'] ?? '';
+                } catch (_) {}
+                if (thumb.isEmpty) {
+                  try {
+                    final imgs = lm['contentImage']?['thumbnailViewModel']?['image']?['sources'] as List?;
+                    if (imgs != null && imgs.isNotEmpty) thumb = imgs.last['url'] ?? '';
+                  } catch (_) {}
                 }
-              } else if (topic == 'movies') {
-                if (durMinutes > 7) valid = false; // trailers are short
-              }
-
-              if (title.isNotEmpty && valid) {
-                seenIds.add(id);
-                videos.add(VideoItem(
-                  id: id,
-                  url: 'https://www.youtube.com/watch?v=$id',
-                  title: title,
-                  channel: channel.isNotEmpty ? channel : 'YouTube',
-                  thumbnail: thumb.isNotEmpty
-                      ? thumb.replaceAll('http://', 'https://')
-                      : 'https://i.ytimg.com/vi/$id/mqdefault.jpg',
-                  duration: dur,
-                  viewCount: views.isNotEmpty ? views : null,
-                ));
+                addVideo(id: videoId, title: title, thumb: thumb);
               }
             }
           }
+          return; // handled — don't recurse further into lockup
         }
+
+        // ── 3. gridShelfViewModel – Shorts shelf row ──────────────────────────
+        if (node.containsKey('gridShelfViewModel')) {
+          final shelf = node['gridShelfViewModel'];
+          if (shelf is Map) {
+            final shelfItems = shelf['items'] as List?;
+            if (shelfItems != null) {
+              for (final si in shelfItems) {
+                if (si is Map) {
+                  final lm2 = si['lockupViewModel'];
+                  if (lm2 is Map) {
+                    final cid = lm2['contentId'] as String?;
+                    if (cid != null && cid.length == 11) {
+                      String t = '';
+                      try { t = lm2['overlayMetadata']?['primaryText']?['content'] ?? ''; } catch (_) {}
+                      String v2 = '';
+                      try { v2 = lm2['overlayMetadata']?['secondaryText']?['content'] ?? ''; } catch (_) {}
+                      String th = '';
+                      try {
+                        final imgs2 = lm2['thumbnailViewModel']?['thumbnailViewModel']?['image']?['sources'] as List?;
+                        if (imgs2 != null && imgs2.isNotEmpty) th = imgs2.last['url'] ?? '';
+                      } catch (_) {}
+                      addVideo(id: cid, title: t.isNotEmpty ? t : 'YouTube Short', thumb: th, views: v2);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          return;
+        }
+
+        // ── 4. compactVideoRenderer / gridVideoRenderer ───────────────────────
+        for (final key in ['compactVideoRenderer', 'gridVideoRenderer']) {
+          if (node.containsKey(key)) {
+            final vr = node[key];
+            if (vr is Map) {
+              final id = vr['videoId'] as String?;
+              if (id != null && id.isNotEmpty) {
+                String title = '';
+                try { title = vr['title']?['runs']?[0]?['text'] ?? vr['title']?['simpleText'] ?? ''; } catch (_) {}
+                String thumb = '';
+                try {
+                  final thumbs = vr['thumbnail']?['thumbnails'] as List?;
+                  if (thumbs != null && thumbs.isNotEmpty) thumb = thumbs.last['url'] ?? '';
+                } catch (_) {}
+                addVideo(id: id, title: title, thumb: thumb);
+              }
+            }
+            return;
+          }
+        }
+
         for (final v in node.values) {
           walk(v);
         }
@@ -765,13 +914,7 @@ class YouTubeService {
     return videos;
   }
 
-  static String _regionToLang(String region) {
-    const map = {
-      'TR': 'tr', 'US': 'en', 'GB': 'en', 'DE': 'de', 'FR': 'fr',
-      'JP': 'ja', 'KR': 'ko', 'RU': 'ru', 'BR': 'pt', 'AZ': 'az',
-    };
-    return map[region.toUpperCase()] ?? 'en';
-  }
+
 
   static int _regionToOffset(String region) {
     const map = {
